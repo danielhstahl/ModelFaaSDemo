@@ -1,4 +1,4 @@
-INCLUDES= -I ../FangOost -I ../FunctionalUtilities -I../rapidjson/include/rapidjson -I../cpp-httplib -I../websocketpp -I../asio/asio/include -I../Vasicek
+INCLUDES= -I../FangOost -I../FunctionalUtilities -I../rapidjson/include/rapidjson -I../cpp-httplib -I../websocketpp -I../asio/asio/include -I../Vasicek
 
 httpCreditRisk:main.o inputschema.o
 	g++ -std=c++14 -O3 $(STATIC) -pthread main.o inputschema.o $(INCLUDES) -o httpCreditRisk -fopenmp

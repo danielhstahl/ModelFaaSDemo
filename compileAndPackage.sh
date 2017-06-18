@@ -6,32 +6,34 @@ function cloneAndCheckout {
 }
 function editMake {
 	sed -i "1s/^/STATIC=-static-libstdc++\n/" makefile 
-	sed -i "../=./" makefile 
+	sed -i "s#../#./#g" makefile 
 }
 function undoMake {
 	sed -i "-static-libstdc++\n=/1s/^/STATIC/" makefile 
-	sed -i "./=../" makefile 
+	sed -i "s#./#../#g" makefile 
 }
 function compile {
 	editMake
 	make 
 	make test
 	./test
-	undoMake
+	#undoMake
 }
 
 cloneAndCheckout FunctionalUtilities 
 cloneAndCheckout CharacteristicFunctions 
 cloneAndCheckout FangOost 
+cloneAndCheckout Vasicek 
 git clone https://github.com/miloyip/rapidjson
 git clone https://github.com/yhirose/cpp-httplib
-git clone https://github.com/yhirose/websocketpp
+git clone https://github.com/zaphoyd/websocketpp
 git clone https://github.com/chriskohlhoff/asio
 compile 
 
 rm -rf FunctionalUtilities
 rm -rf CharacteristicFunctions
 rm -rf FangOost
+rm -rf Vasicek
 rm -rf rapidjson
 rm -rf cpp-httplib
 rm -rf websocketpp

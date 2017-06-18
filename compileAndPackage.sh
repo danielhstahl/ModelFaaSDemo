@@ -9,7 +9,8 @@ function editMake {
 	sed -i "s#../#./#g" makefile 
 }
 function undoMake {
-	sed -i "-static-libstdc++\n=/1s/^/STATIC/" makefile 
+	sed -i "s#STATIC=-static-libstdc++\n##g" makefile 
+	sed -i "/^\s*$/d" makefile
 	sed -i "s#./#../#g" makefile 
 }
 function compile {
@@ -17,7 +18,7 @@ function compile {
 	make 
 	make test
 	./test
-	#undoMake
+	undoMake
 }
 
 cloneAndCheckout FunctionalUtilities 

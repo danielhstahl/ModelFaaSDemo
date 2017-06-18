@@ -63,7 +63,30 @@ auto handleHttpConnect(const char* url, int port){
 
 
 auto handleWSConnect(const std::string& wsconnect){
-    
+    c.set_access_channels(websocketpp::log::alevel::all);
+    c.clear_access_channels(websocketpp::log::alevel::frame_payload);
+
+    // Initialize ASIO
+    c.init_asio();
+
+    // Register our message handler
+    c.set_message_handler(bind(&on_message,&c,::_1,::_2));
+
+    websocketpp::lib::error_code ec;
+    client::connection_ptr con = c.get_connection(uri, ec);
+    if (ec) {
+        std::cout << "could not create connection because: " << ec.message() << std::endl;
+        return 0;
+    }
+
+    // Note that connect here only requests a connection. No network messages are
+    // exchanged until the event loop starts running in the next line.
+    c.connect(con);
+
+    // Start the ASIO io_service run loop
+    // this will cause a single connection to be made to the server. c.run()
+    // will exit when this connection is closed.
+    c.run();
     /*return [&cli](const std::string& endpoint, const auto&& cb){
         auto res = cli.get(std::string("/")+endpoint);
         if (res && res->status == 200) {

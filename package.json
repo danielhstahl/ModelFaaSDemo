@@ -1,0 +1,33 @@
+{
+  "name": "modelfaasdemo",
+  "version": "1.0.0",
+  "description": "Demo for how to make an easy to validate model",
+  "main": "testServer.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phillyfan1138/ModelFaaSDemo.git"
+  },
+  "keywords": [
+    "lambda",
+    "faas",
+    "credit",
+    "risk"
+  ],
+  "author": "Daniel Stahl",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/phillyfan1138/ModelFaaSDemo/issues"
+  },
+  "homepage": "https://github.com/phillyfan1138/ModelFaaSDemo#readme",
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "express": "^4.15.3",
+    "ws": "^3.0.0"
+  }
+}

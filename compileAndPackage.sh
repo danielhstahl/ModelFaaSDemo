@@ -9,7 +9,7 @@ function editMake {
 	sed -i "s#\.\./#./#g" makefile 
 }
 function undoMake {
-	sed -i "s#STATIC=-static-libstdc++\n##g" makefile 
+	sed -i "s#STATIC=-static-libstdc++##g" makefile 
 	sed -i "/^\s*$/d" makefile
 	sed -i "s#\./#\.\./#g" makefile 
 }
@@ -27,8 +27,9 @@ cloneAndCheckout FangOost
 cloneAndCheckout Vasicek 
 git clone https://github.com/miloyip/rapidjson
 git clone https://github.com/yhirose/cpp-httplib
-git clone https://github.com/zaphoyd/websocketpp
-git clone https://github.com/chriskohlhoff/asio
+#git clone https://github.com/dhbaird/easywsclient
+#wget https://raw.github.com/dhbaird/easywsclient/master/easywsclient.hpp
+#wget https://raw.github.com/dhbaird/easywsclient/master/easywsclient.cpp
 compile 
 
 rm -rf FunctionalUtilities
@@ -37,6 +38,6 @@ rm -rf FangOost
 rm -rf Vasicek
 rm -rf rapidjson
 rm -rf cpp-httplib
-rm -rf websocketpp
-rm -rf asio
+#rm -rf easywsclient
+#rm -rf asio
 #serverless deploy -v

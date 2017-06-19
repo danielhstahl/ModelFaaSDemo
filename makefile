@@ -1,13 +1,20 @@
-INCLUDES= -I../FangOost -I../FunctionalUtilities -I../rapidjson/include/rapidjson -I../cpp-httplib -I../websocketpp -I../asio/asio/include -I../Vasicek
+INCLUDES= -I../FangOost -I../FunctionalUtilities -I../rapidjson/include/rapidjson -I../cpp-httplib -I../Vasicek
 
-httpCreditRisk:main.o inputschema.o
-	g++ -std=c++14 -O3 $(STATIC) -pthread main.o inputschema.o $(INCLUDES) -o httpCreditRisk -fopenmp
+httpCreditRisk:main.o inputschema.o serverschema.o easywsclient.o
+	g++ -std=c++14 -O3 $(STATIC) -pthread main.o inputschema.o serverschema.o easywsclient.o $(INCLUDES) -o httpCreditRisk -fopenmp
 
 main.o: main.cpp CreditUtilities.h 
 	g++ -std=c++14 -O3 $(STATIC) -pthread -c main.cpp   $(INCLUDES) -fopenmp
 
 inputschema.o: inputschema.json
 	objcopy --input binary --output elf64-x86-64 --binary-architecture i386 inputschema.json inputschema.o
+
+serverschema.o: serverschema.json
+	objcopy --input binary --output elf64-x86-64 --binary-architecture i386 serverschema.json serverschema.o
+
+easywsclient.o: easywsclient.cpp easywsclient.hpp
+	g++ -std=c++14 -O3 $(STATIC) -c easywsclient.cpp -o easywsclient.o
+
 clean:
 	-rm *.o httpCreditRisk *.out
 

@@ -6,14 +6,12 @@ const model=spawn("./httpCreditRisk", [JSON.stringify(testJson)]);
 let modelOutput
 let modelErr
 model.stdout.on('data', (data)=>{
-    modelOutput+=data;
+    console.log(""+data)
 });
 model.stderr.on('data', (data)=>{
-    modelErr+=data;
+    console.log("error!")
+    console.log(""+data)
 });
 model.on('close', (code)=>{
-    if(modelErr){
-        return console.log(modelErr)
-    }
-    return console.log(modelOutput)
+    console.log("closed")
 });

@@ -52,8 +52,8 @@ bool ensureEnoughArgs(int argc){
     return argc>1?true:false;
 }
 auto handleHttpConnect(const char* url, int port){
-    httplib::Client cli(url, port);
-    return [&cli](const std::string& endpoint, const auto&& cb){
+    return [url, port](const std::string& endpoint, const auto&& cb){
+        httplib::Client cli(url, port);
         auto res = cli.get((std::string("/")+endpoint).c_str());
         if (res && res->status == 200) {
             cb(res->body);
@@ -94,6 +94,7 @@ int main(int argc, char* argv[])
     if(!handleSchema(inputschema.c_str(), argv[1], parms)){
         return 0;
     }
+    auto getHttpFn=handleHttpConnect(parms["url"].GetString(), parms["port"].GetInt());
     std::cout<<"successfully parsed!"<<std::endl;
     //auto restConnectionFn=handleWSConnect(parms["wsconnect"].GetString());
     auto params=parms["params"].GetObject();
@@ -109,6 +110,7 @@ int main(int argc, char* argv[])
     auto alphL=params["alphL"].GetDouble();
     auto bL=params["bL"].GetDouble();
     auto sigL=params["sigL"].GetDouble();
+    
     std::cout<<"successfully assigned variables"<<std::endl;
     /**prepare functions for CF inversion*/
     std::vector<std::complex<double> > cf(uSteps);
@@ -128,37 +130,19 @@ int main(int argc, char* argv[])
     auto curriedW=[](const auto& loan, const auto& index){return loan["w"][index].GetDouble();};
    // auto testResults=curriedLogLPMCF(.5, loans);
     auto curriedFullCF=creditutilities::getFullCFFn(xMin, xMax,
-        vasicek::getVasicekMFGFn(expectation, variance),
-        creditutilities::getLiquidityRiskFn(lambda, q),
+        vasicek::getVasicekMFGFn(expectation, variance),//v->value
+        creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
         creditutilities::logLPMCF(
             alpha.Size(),
             creditutilities::getLGDCFFn(alphL, bL, sigL, tau, bL), 
             curriedL, curriedPD, curriedW
-        )
+        )//u, loans->v
     );
 
-
-    httplib::Client cli(parms["url"].GetString(), parms["port"].GetInt());
-    auto res = cli.get((std::string("/")+std::string(parms["endpoint"].GetString())).c_str());
-    //std::cout<<"got to  143"<<std::endl;
-    /**we are going to have to recursively call this...*/
-    if (res && res->status == 200) {
-        std::cout<<res->body<<std::endl;
-        rapidjson::Document loans;
-        //std::cout<<message<<std::endl;
-        if(!handleSchema(serverschema.c_str(), res->body.c_str(), loans)){
-            return 0;
-        }
-        cf=curriedFullCF(
-            std::move(cf), 
-            loans.GetArray()
-        );
-    }
     
-    /*auto getHttpFn=handleHttpConnect(parms["url"].GetString(), parms["port"].GetInt());
     getHttpFn(parms["endpoint"].GetString(), [&](const std::string& message){
         rapidjson::Document loans;
-        std::cout<<message<<std::endl;
+        //std::cout<<message<<std::endl;
         if(!handleSchema(serverschema.c_str(), message.c_str(), loans)){
             return 0;
         }
@@ -166,47 +150,11 @@ int main(int argc, char* argv[])
             std::move(cf), 
             loans.GetArray()
         );
-    });*/
-    //After here, do the http request
-    //restConnectionFn(parms["endpoint"]);
-    /*using easywsclient::WebSocket;
-    WebSocket::pointer ws = WebSocket::from_url(parms["wsconnect"].GetString());
-   // WebSocket::pointer ws = WebSocket::from_url("ws://localhost:3000");
-    assert(ws); 
-    while (true) { 
-        ws->poll();
-        //ws->send("hello");
-        ws->dispatch([&](const std::string& message){
-            std::thread first([&](){
-                rapidjson::Document loans;
-                std::cout<<message<<std::endl;
-                if(!handleSchema(serverschema.c_str(), message.c_str(), loans)){
-                    return 0;
-                }
-                cf=curriedFullCF(
-                    std::move(cf), 
-                    loans.GetArray()
-                );
-            });
-        });
-    }
-    delete ws; // alternatively, use unique_ptr<> if you have C++11
-    return 0;*/
-
-
-    //handleWSConnect(parms["wsconnect"].GetString(), getMessageHandler, getOpenHandler);
-    //const auto density=fangoost::computeInvDiscrete(xSteps, xMin, xMax, std::move(cf));
-
-    /*Server svr;
-
-    svr.get("/hi", [](const auto& req, auto& res) {
-        res.set_content("Hello World!", "text/plain");
+        std::cout<<"example CF: "<<cf[0].real()<<std::endl;
+        const auto density=fangoost::computeInvDiscrete(xSteps, xMin, xMax, std::move(cf));
+        /*for(auto& val:density){
+            std::cout<<val<<std::endl;
+        }*/
     });
-
-    svr.get(R"(/numbers/(\d+))", [&](const auto& req, auto& res) {
-        auto numbers = req.matches[1];
-        res.set_content(numbers, "text/plain");
-    });
-
-    svr.listen("localhost", 1234);*/
+    
 }

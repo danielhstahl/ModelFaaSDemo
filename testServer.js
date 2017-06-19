@@ -27,7 +27,7 @@ const generateFakeLoanData=(numLoans, numMacroWeight)=>{
 }
 app.get('/hello', (req, res)=>{
     console.log("got here");
-    const data=generateFakeLoanData(1000, 3)
+    const data=generateFakeLoanData(100, 3)
     //console.log(data)
     res.send(data)//generateFakeLoanData(1000, 3))
 })

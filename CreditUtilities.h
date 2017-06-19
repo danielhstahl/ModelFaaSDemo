@@ -19,10 +19,10 @@ namespace creditutilities {
 
     template<typename Number, typename GetVasicekMGF, typename GetLiquidity, typename GetLogLPMCF>
     auto getFullCFFn(const Number& xMin, const Number& xMax, const GetVasicekMGF& getVasicekMGF, const GetLiquidity& getLiquidity, const GetLogLPMCF& logLPMCF){
-        auto du=fangoost::computeDU(xMin, xMax);
-        auto cp=fangoost::computeCP(du);
-        return [/*&xMax,*/&du, &cp, &xMin, &getVasicekMGF, &logLPMCF, &getLiquidity](auto&& cf, const auto& loans){
-            
+        return [xMax,xMin, getVasicekMGF, logLPMCF, getLiquidity](auto&& cf, const auto& loans){
+        //return [&xMax,&xMin, &getVasicekMGF, &logLPMCF, &getLiquidity](auto&& cf, const auto& loans){
+            auto du=fangoost::computeDU(xMin, xMax);
+            auto cp=fangoost::computeCP(du);
             return futilities::for_each_parallel(cf, [&](const auto& val, const auto& index){
                 return fangoost::formatCF(fangoost::getComplexU(fangoost::getU(du, index)), xMin, cp, [&](const auto u){
                     return getVasicekMGF(
@@ -51,9 +51,9 @@ namespace creditutilities {
     /**Characteristic function for LGD.  Follows CIR process.  U is typically complex*/
     template<typename Lambda, typename Theta, typename Sigma, typename T, typename X0>
     auto getLGDCFFn(const Lambda &lambda,const Theta &theta, const Sigma &sigma, const T &t, const X0 &x0){
-        auto expt=exp(-lambda*t);
-        auto sigL=-sigma*sigma/(2*lambda);
-        return [/*&lambda, &t, &sigma,*/&expt, &sigL, &theta, &x0](const auto& u, const auto& l){
+        return [&lambda, &t, &sigma,/*&expt, &sigL,*/ &theta, &x0](const auto& u, const auto& l){
+            auto expt=exp(-lambda*t);
+            auto sigL=-sigma*sigma/(2*lambda);
             auto uu=u*l;
             auto uP=uu*(1-expt)*sigL+1.0;
             return exp((uu*expt*x0)/uP)*pow(uP, theta/sigL);

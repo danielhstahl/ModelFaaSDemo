@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
     
     std::cout<<"successfully assigned variables"<<std::endl;
     /**prepare functions for CF inversion*/
-    std::vector<std::complex<double> > cf(uSteps);
+    std::vector<double > cf(uSteps);
     /**function to retreive vector values from JSON*/
     auto retreiveJSONValue=[](const auto& val){
         return val.GetDouble();
@@ -150,7 +150,7 @@ int main(int argc, char* argv[])
             std::move(cf), 
             loans.GetArray()
         );
-        std::cout<<"example CF: "<<cf[0].real()<<std::endl;
+        std::cout<<"example CF: "<<cf[0]<<std::endl;
         const auto density=fangoost::computeInvDiscrete(xSteps, xMin, xMax, std::move(cf));
         /*for(auto& val:density){
             std::cout<<val<<std::endl;

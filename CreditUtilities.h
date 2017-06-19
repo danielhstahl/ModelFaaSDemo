@@ -23,9 +23,9 @@ namespace creditutilities {
         //return [&xMax,&xMin, &getVasicekMGF, &logLPMCF, &getLiquidity](auto&& cf, const auto& loans){
             auto du=fangoost::computeDU(xMin, xMax);
             auto cp=fangoost::computeCP(du);
-            /**TODO!! Note that using cf in this manner returns a complex vector, not a real one!*/
+            /**Note that val+!!!  This is so the cf can be recursively built from multiple runs over loans*/
             return futilities::for_each_parallel(cf, [&](const auto& val, const auto& index){
-                return fangoost::formatCF(fangoost::getComplexU(fangoost::getU(du, index)), xMin, cp, [&](const auto u){
+                return val+fangoost::formatCF(fangoost::getComplexU(fangoost::getU(du, index)), xMin, cp, [&](const auto u){
                     return getVasicekMGF(
                         logLPMCF(
                             getLiquidity(u),

@@ -1,6 +1,5 @@
 {
-    "url":"localhost",
-    "port":3000,
+    "url":"ws://localhost:3000",
     "endpoint":"hello",
     "params":{
         "xMin":0,

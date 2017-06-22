@@ -9,7 +9,7 @@
 #define ASIO_HAS_STD_ADDRESSOF
 #define ASIO_HAS_STD_SHARED_PTR
 #define ASIO_HAS_STD_TYPE_TRAITS*/
-#include "httplib.h"
+//#include "httplib.h"
 #include "CreditUtilities.h"
 #include "document.h" //rapidjson
 #include "writer.h" //rapidjson
@@ -24,11 +24,13 @@
 #include <complex>
 #include <stdio.h> //for binary data
 #include <set>
+
+#include <uWS/uWS.h>
 //#include "easywsclient.hpp"
 //#include <thread>
-/*#include <asio.hpp>
+#include <asio.hpp>
 #include <websocketpp/config/asio_no_tls_client.hpp>
-#include <websocketpp/client.hpp>*/
+#include <websocketpp/client.hpp>
 #include <iostream>
 extern "C" {
     extern char _binary_inputschema_json_start; //binary data
@@ -38,20 +40,20 @@ extern "C" {
 }
 
 
-/*typedef websocketpp::client<websocketpp::config::asio_client> client;
+typedef websocketpp::client<websocketpp::config::asio_client> client;
 
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 
 // pull out the type of messages sent by our config
-typedef websocketpp::config::asio_client::message_type::ptr message_ptr;*/
+typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
 
 
 bool ensureEnoughArgs(int argc){
     return argc>1?true:false;
 }
-auto handleHttpConnect(const char* url, int port){
+/*auto handleHttpConnect(const char* url, int port){
     return [url, port](const std::string& endpoint, const auto&& cb){
         httplib::Client cli(url, port);
         auto res = cli.get((std::string("/")+endpoint).c_str());
@@ -59,7 +61,47 @@ auto handleHttpConnect(const char* url, int port){
             cb(res->body);
         }
     };
-}
+}*/
+template<typename CB>
+struct handleWS{
+    client c;
+    std::vector<double>& cf;
+    std::string serverschema;
+    CB& fn;
+    handleWS(std::string& serverschema_, std::vector<double>& cf_, CB& fn_):cf(cf_), fn(fn_), serverschema(serverschema_){}
+    void on_message(client* c, websocketpp::connection_hdl hdl, message_ptr msg){
+        rapidjson::Document loans;
+        if(!handleSchema(serverschema.c_str(), msg->get_payload().c_str(), loans)){
+            return;
+        }
+        cf=fn(
+            std::move(cf), 
+            loans.GetArray()
+        );
+        std::cout<<"example CF: "<<cf[0]<<std::endl;
+        //const auto density=fangoost::computeInvDiscrete(xSteps, xMin, xMax, std::move(cf));
+    }
+    std::vector<double>&& get_result(){
+        return cf;
+    }
+    void connect(const std::string& url, const std::string& endpoint){
+        c.set_access_channels(websocketpp::log::alevel::all);
+        c.clear_access_channels(websocketpp::log::alevel::frame_payload);
+        // Initialize ASIO
+        c.init_asio();
+        c.set_message_handler(bind(&handleWS::on_message,&c,::_1,::_2));
+        websocketpp::lib::error_code ec;
+        client::connection_ptr con = c.get_connection(url, ec);
+        if (ec) {
+            std::cout << "could not create connection because: " << ec.message() << std::endl;
+            return;
+        }
+        c.connect(con);
+        c.run();
+    }
+};
+
+
 
 std::string getInputSchema(){
     std::string inputschema;
@@ -94,7 +136,7 @@ int main(int argc, char* argv[])
     if(!handleSchema(inputschema.c_str(), argv[1], parms)){
         return 0;
     }
-    auto getHttpFn=handleHttpConnect(parms["url"].GetString(), parms["port"].GetInt());
+    //auto getHttpFn=handleHttpConnect(parms["url"].GetString(), parms["port"].GetInt());
     std::cout<<"successfully parsed!"<<std::endl;
     //auto restConnectionFn=handleWSConnect(parms["wsconnect"].GetString());
     auto params=parms["params"].GetObject();
@@ -138,9 +180,12 @@ int main(int argc, char* argv[])
             curriedL, curriedPD, curriedW
         )//u, loans->v
     );
+    handleWS<decltype(curriedFullCF)> ws(serverschema, cf, curriedFullCF);
+    ws.connect(parms["url"].GetString(), parms["endpoint"].GetString());
+    //fangoost::computeInvDiscrete(xSteps, xMin, xMax, std::move(cf));
 
-    
-    getHttpFn(parms["endpoint"].GetString(), [&](const std::string& message){
+
+   /* getHttpFn(parms["endpoint"].GetString(), [&](const std::string& message){
         rapidjson::Document loans;
         //std::cout<<message<<std::endl;
         if(!handleSchema(serverschema.c_str(), message.c_str(), loans)){
@@ -152,9 +197,7 @@ int main(int argc, char* argv[])
         );
         std::cout<<"example CF: "<<cf[0]<<std::endl;
         const auto density=fangoost::computeInvDiscrete(xSteps, xMin, xMax, std::move(cf));
-        /*for(auto& val:density){
-            std::cout<<val<<std::endl;
-        }*/
-    });
+
+    });*/
     
 }

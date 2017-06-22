@@ -1,8 +1,8 @@
-//const WebSocket = require('ws');
-const express = require('express')
+const WebSocket = require('ws');
+/*const express = require('express')
 const bodyParser=require('body-parser')
 const app = express()
-app.use(bodyParser.json())
+app.use(bodyParser.json())*/
 const generateWeights=(numWeights)=>{
     let myWeights=[]
     for(let i=0; i<numWeights; ++i){
@@ -25,7 +25,7 @@ const generateFakeLoanData=(numLoans, numMacroWeight)=>{
     }
     return loans
 }
-app.get('/hello', (req, res)=>{
+/*app.get('/hello', (req, res)=>{
     console.log("got here");
     const data=generateFakeLoanData(100, 3)
     //console.log(data)
@@ -33,12 +33,12 @@ app.get('/hello', (req, res)=>{
 })
 app.listen(3000,  ()=>{
     console.log('Example app listening on port 3000!')
-})
-/*const wss = new WebSocket.Server({ port: 3000 });
+})*/
+const wss = new WebSocket.Server({ port: 3000 });
 wss.on('connection', ws=>{
     console.log("Connected")
     ws.on('message', message=>{
         console.log('received: %s', message);
     });
     ws.send('something');
-});*/
+});

@@ -1,6 +1,7 @@
 .vscode
 *.o
 *.out
+build
 httpCreditRisk
 test
 node_modules

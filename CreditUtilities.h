@@ -20,7 +20,6 @@ namespace creditutilities {
     template<typename Number, typename GetVasicekMGF, typename GetLiquidity, typename GetLogLPMCF>
     auto getFullCFFn(const Number& xMin, const Number& xMax, const GetVasicekMGF& getVasicekMGF, const GetLiquidity& getLiquidity, const GetLogLPMCF& logLPMCF){
         return [xMax,xMin, getVasicekMGF, logLPMCF, getLiquidity](auto&& cf, const auto& loans){
-        //return [&xMax,&xMin, &getVasicekMGF, &logLPMCF, &getLiquidity](auto&& cf, const auto& loans){
             auto du=fangoost::computeDU(xMin, xMax);
             auto cp=fangoost::computeCP(du);
             /**Note that val+!!!  This is so the cf can be recursively built from multiple runs over loans*/

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Demo for how to make an easy to validate model",
   "main": "testServer.js",
+  "gypfile": true,
   "directories": {
     "test": "test"
   },
@@ -28,6 +29,7 @@
   "dependencies": {
     "body-parser": "^1.17.2",
     "express": "^4.15.3",
+    "nan": "^2.6.2",
     "ws": "^3.0.0"
   }
 }

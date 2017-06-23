@@ -25,12 +25,12 @@
 #include <stdio.h> //for binary data
 #include <set>
 
-#include <uWS/uWS.h>
+//#include <uWS/uWS.h>
 //#include "easywsclient.hpp"
 //#include <thread>
-#include <asio.hpp>
+/*#include <asio.hpp>
 #include <websocketpp/config/asio_no_tls_client.hpp>
-#include <websocketpp/client.hpp>
+#include <websocketpp/client.hpp>*/
 #include <iostream>
 extern "C" {
     extern char _binary_inputschema_json_start; //binary data
@@ -40,14 +40,14 @@ extern "C" {
 }
 
 
-typedef websocketpp::client<websocketpp::config::asio_client> client;
+/*typedef websocketpp::client<websocketpp::config::asio_client> client;
 
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 
 // pull out the type of messages sent by our config
-typedef websocketpp::config::asio_client::message_type::ptr message_ptr;
+typedef websocketpp::config::asio_client::message_type::ptr message_ptr;*/
 
 
 bool ensureEnoughArgs(int argc){
@@ -62,7 +62,7 @@ bool ensureEnoughArgs(int argc){
         }
     };
 }*/
-template<typename CB>
+/*template<typename CB>
 struct handleWS{
     client c;
     std::vector<double>& cf;
@@ -99,7 +99,7 @@ struct handleWS{
         c.connect(con);
         c.run();
     }
-};
+};*/
 
 
 

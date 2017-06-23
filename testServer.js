@@ -38,7 +38,8 @@ const wss = new WebSocket.Server({ port: 3000 });
 wss.on('connection', ws=>{
     console.log("Connected")
     ws.on('message', message=>{
-        console.log('received: %s', message);
+        
+        ws.send(generateFakeLoanData(1000, 3))
     });
-    ws.send('something');
+    //ws.send('something');
 });

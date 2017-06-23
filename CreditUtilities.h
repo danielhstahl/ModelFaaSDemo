@@ -24,7 +24,7 @@ namespace creditutilities {
             auto cp=fangoost::computeCP(du);
             /**Note that val+!!!  This is so the cf can be recursively built from multiple runs over loans*/
             return futilities::for_each_parallel(cf, [&](const auto& val, const auto& index){
-                return val+fangoost::formatCF(fangoost::getComplexU(fangoost::getU(du, index)), xMin, cp, [&](const auto u){
+                return val+fangoost::formatCF(fangoost::getComplexU(fangoost::getU(du, index)), xMin, cp, [&](const auto& u){
                     return getVasicekMGF(
                         logLPMCF(
                             getLiquidity(u),
@@ -40,9 +40,11 @@ namespace creditutilities {
     template<typename GetL, typename GetW, typename GetPD, typename LGDCF>
     auto logLPMCF(int m, const LGDCF& lgdCF, const GetL& getL, const GetPD& getPD, const GetW& getW){
         return [&lgdCF, &getL, &getPD, &getW, m](const auto &u, const auto& loans){//
+            int begin=0;
+            int loanSize=(int)loans.Size();
             return futilities::for_each_parallel(0, m, [&](const auto& indexM){
-                return futilities::sum(loans, [&](const auto& loan, const auto& index){
-                    return (lgdCF(u, getL(loan))-1.0)*getPD(loan)*getW(loan, indexM);
+                return futilities::sum(begin, loanSize, [&](const auto& index){
+                    return (lgdCF(u, getL(loans[index]))-1.0)*getPD(loans[index])*getW(loans[index], indexM);
                 });
             });
         };
@@ -51,9 +53,9 @@ namespace creditutilities {
     /**Characteristic function for LGD.  Follows CIR process.  U is typically complex*/
     template<typename Lambda, typename Theta, typename Sigma, typename T, typename X0>
     auto getLGDCFFn(const Lambda &lambda,const Theta &theta, const Sigma &sigma, const T &t, const X0 &x0){
-        return [&lambda, &t, &sigma,/*&expt, &sigL,*/ &theta, &x0](const auto& u, const auto& l){
-            auto expt=exp(-lambda*t);
-            auto sigL=-sigma*sigma/(2*lambda);
+        auto expt=exp(-lambda*t);
+        auto sigL=-sigma*sigma/(2*lambda);
+        return [expt, sigL,&theta, &x0](const auto& u, const auto& l){
             auto uu=u*l;
             auto uP=uu*(1-expt)*sigL+1.0;
             return exp((uu*expt*x0)/uP)*pow(uP, theta/sigL);

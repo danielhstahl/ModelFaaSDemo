@@ -9,7 +9,12 @@
 #define ASIO_HAS_STD_ADDRESSOF
 #define ASIO_HAS_STD_SHARED_PTR
 #define ASIO_HAS_STD_TYPE_TRAITS*/
-//#include "httplib.h"
+
+/*#include <cstddef>  
+#include <cstdint> 
+#define RAPIDJSON_NO_SIZETYPEDEFINE
+namespace rapidjson { typedef size_t SizeType; }*/
+
 #include "CreditUtilities.h"
 #include <functional>
 #include "document.h" //rapidjson
@@ -145,8 +150,8 @@ class MyObject : public Nan::ObjectWrap {
     //info.GetReturnValue().Set(obj->handle());
     char* loanJson = (char*) node::Buffer::Data(info[0]->ToObject());
     rapidjson::Document loans;
-    if(!handleSchema(serverschema.c_str(), loanJson, loans)){
-        return 0;
+    if(!handleSchema(obj->serverschema.c_str(), loanJson, loans)){
+        return;
     }
     obj->cf=obj->curriedFullCF(
         std::move(obj->cf), 
@@ -156,11 +161,16 @@ class MyObject : public Nan::ObjectWrap {
   }
 
   static NAN_METHOD(computeDensity) {
+      Nan:: HandleScope scope;
+
     MyObject* obj = Nan::ObjectWrap::Unwrap<MyObject>(info.Holder());
     std::vector<double> density=fangoost::computeInvDiscrete(obj->xSteps, obj->xMin, obj->xMax, std::move(obj->cf));
-    
-    info.GetReturnValue().Set(&density[0]);
-    //return &density[0];
+    int densitySize=density.size();
+    v8::Local<v8::Array> array = Nan::New<v8::Array>(densitySize);
+    for(int i=0; i<densitySize;++i){
+        Nan::Set(array, i, Nan::New<v8::Number>(density[i]));
+    }
+    info.GetReturnValue().Set(array);
   }
 
   static inline Nan::Persistent<v8::Function> & constructor() {
@@ -168,11 +178,12 @@ class MyObject : public Nan::ObjectWrap {
     return my_constructor;
   }
   std::vector<double > cf;//(uSteps);
-  std::function<std::vector<double>(std::vector<double>&&, rapidjson::Value&)> curriedFullCF;
+  std::function<std::vector<double>(std::vector<double>&&, const rapidjson::Value&)> curriedFullCF;
+  //std::function<void()> curriedFullCF;
   double xMin;
   double xMax;
   int xSteps;
     std::string serverschema;
   //double value_;
 };
-
+NODE_MODULE(objectwrapper, MyObject::Init);

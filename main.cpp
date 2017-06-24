@@ -63,7 +63,7 @@ std::string getServerSchema(){
 }
 
 
-class MyObject : public Nan::ObjectWrap {
+class LoanCF : public Nan::ObjectWrap {
  public:
   static NAN_MODULE_INIT(Init) {
     v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
@@ -79,16 +79,18 @@ class MyObject : public Nan::ObjectWrap {
   }
 
  private:
-  explicit MyObject(char* inputJson)/* : value_(value)*/ {}
-  ~MyObject() {}
+  explicit LoanCF(char* inputJson)/* : value_(value)*/ {}
+  ~LoanCF() {}
 
   static NAN_METHOD(New) {
     if (info.IsConstructCall()) {
         char* inputJson = (char*) node::Buffer::Data(info[0]->ToObject());
-        MyObject *obj = new MyObject(inputJson);
+        LoanCF *obj = new LoanCF(inputJson);
         obj->Wrap(info.This());
         rapidjson::Document parms;
         obj->serverschema=getServerSchema();
+        std::cout<<obj->serverschema<<std::endl;
+        std::cout<<getInputSchema()<<std::endl;
         /**Note!  handleSchema modifies parms*/
         if(!handleSchema(getInputSchema().c_str(), inputJson, parms)){
             return;
@@ -146,7 +148,7 @@ class MyObject : public Nan::ObjectWrap {
   }
 
   static NAN_METHOD(supplyCF) {
-    MyObject* obj = Nan::ObjectWrap::Unwrap<MyObject>(info.Holder());
+    LoanCF* obj = Nan::ObjectWrap::Unwrap<LoanCF>(info.Holder());
     //info.GetReturnValue().Set(obj->handle());
     char* loanJson = (char*) node::Buffer::Data(info[0]->ToObject());
     rapidjson::Document loans;
@@ -163,7 +165,7 @@ class MyObject : public Nan::ObjectWrap {
   static NAN_METHOD(computeDensity) {
       Nan:: HandleScope scope;
 
-    MyObject* obj = Nan::ObjectWrap::Unwrap<MyObject>(info.Holder());
+    LoanCF* obj = Nan::ObjectWrap::Unwrap<LoanCF>(info.Holder());
     std::vector<double> density=fangoost::computeInvDiscrete(obj->xSteps, obj->xMin, obj->xMax, std::move(obj->cf));
     int densitySize=density.size();
     v8::Local<v8::Array> array = Nan::New<v8::Array>(densitySize);
@@ -186,4 +188,4 @@ class MyObject : public Nan::ObjectWrap {
     std::string serverschema;
   //double value_;
 };
-NODE_MODULE(objectwrapper, MyObject::Init);
+NODE_MODULE(objectwrapper, LoanCF::Init);

@@ -7,7 +7,7 @@ const testJson=require('./test.json')
 //const buffer = Buffer.from("ABC");
 
 // synchronous, rotates each character by +13
-const myObj=new addon.MyObject(JSON.stringify(testJson))
+const myObj=new addon.LoanCF(Buffer.from(JSON.stringify(testJson), 'utf8'))
 const ws = new WebSocket('ws://localhost:3000');
 ws.on('open', ()=>{
     ws.on('message', (res)=>{

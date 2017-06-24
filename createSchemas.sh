@@ -1,0 +1,2 @@
+objcopy --input binary --output elf64-x86-64 --binary-architecture i386 inputschema.json inputschema.o
+objcopy --input binary --output elf64-x86-64 --binary-architecture i386 serverschema.json serverschema.o

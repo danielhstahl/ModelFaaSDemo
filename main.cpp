@@ -1,5 +1,5 @@
 #define _USE_MATH_DEFINES
-/*#define _WEBSOCKETPP_CPP11_THREAD_
+#define _WEBSOCKETPP_CPP11_THREAD_
 #define _WEBSOCKETPP_CPP11_CHRONO_
 #define _WEBSOCKETPP_CPP11_TYPE_TRAITS_
 #define ASIO_STANDALONE
@@ -8,7 +8,7 @@
 #define ASIO_HAS_CSTDINT
 #define ASIO_HAS_STD_ADDRESSOF
 #define ASIO_HAS_STD_SHARED_PTR
-#define ASIO_HAS_STD_TYPE_TRAITS*/
+#define ASIO_HAS_STD_TYPE_TRAITS
 
 /*#include <cstddef>  
 #include <cstdint> 
@@ -25,14 +25,18 @@ namespace rapidjson { typedef size_t SizeType; }*/
 #include "FangOost.h"
 #include "FunctionalUtilities.h"
 #include "Vasicek.h"
+#include <mutex>   
 #include "CheckSchema.h" //handleSchema
 #include <vector>
 #include <complex>
 #include <stdio.h> //for binary data
 #include <set>
-#include <nan.h>
-using namespace Nan;  
-using namespace v8;
+#include <websocketpp/config/asio_no_tls_client.hpp>
+#include <websocketpp/client.hpp>
+
+#include <typeinfo> //for checking types..remove in production
+
+typedef websocketpp::client<websocketpp::config::asio_client> client;
 
 #include <iostream>
 extern "C" {
@@ -44,7 +48,7 @@ extern "C" {
 
 
 
-
+std::mutex mtx;    
 bool ensureEnoughArgs(int argc){
     return argc>1?true:false;
 }
@@ -63,129 +67,293 @@ std::string getServerSchema(){
 }
 
 
-class LoanCF : public Nan::ObjectWrap {
- public:
-  static NAN_MODULE_INIT(Init) {
-    v8::Local<v8::FunctionTemplate> tpl = Nan::New<v8::FunctionTemplate>(New);
-    tpl->SetClassName(Nan::New("LoanCF").ToLocalChecked());
-    tpl->InstanceTemplate()->SetInternalFieldCount(1);
+double curriedPD(const rapidjson::Value& loan){return loan["pd"].GetDouble();}
 
-    Nan::SetPrototypeMethod(tpl, "supplyCF", supplyCF);
-    Nan::SetPrototypeMethod(tpl, "computeDensity", computeDensity);
 
-    constructor().Reset(Nan::GetFunction(tpl).ToLocalChecked());
-    Nan::Set(target, Nan::New("LoanCF").ToLocalChecked(),
-      Nan::GetFunction(tpl).ToLocalChecked());
-  }
+double curriedL(const rapidjson::Value& loan){return loan["l"].GetDouble();} 
 
- private:
-  explicit LoanCF(char* inputJson)/* : value_(value)*/ {}
-  ~LoanCF() {}
+double curriedW(const rapidjson::Value& loan, const int& index){return loan["w"][index].GetDouble();} 
 
-  static NAN_METHOD(New) {
-    if (info.IsConstructCall()) {
-        char* inputJson = (char*) node::Buffer::Data(info[0]->ToObject());
-        LoanCF *obj = new LoanCF(inputJson);
-        obj->Wrap(info.This());
-        rapidjson::Document parms;
-        obj->serverschema=getServerSchema();
-        std::cout<<obj->serverschema<<std::endl;
-        std::cout<<getInputSchema()<<std::endl;
-        /**Note!  handleSchema modifies parms*/
-        if(!handleSchema(getInputSchema().c_str(), inputJson, parms)){
-            return;
-        }
-        auto params=parms["params"].GetObject();
-        //auto loans=params["loans"].GetArray();
+/**TEMPORARY*/
+struct loan{
+	double pd;
+	//std::function<Complex(const Complex&)> lgdCF;//characteristic function
+	double exposure;
+	std::vector<double> w;
+	loan(double pd_, double exposure_, std::vector<double>&& w_){
+			pd=pd_;
+			exposure=exposure_;
+			w=w_;
+	}
+	loan(){
+    }
+};
+
+
+class connection_functions {
+public:
+    typedef websocketpp::lib::shared_ptr<connection_functions> ptr;
+
+    connection_functions(int id, websocketpp::connection_hdl hdl, std::string uri, const rapidjson::Value& params)
+      : m_id(id)
+      , m_hdl(hdl)
+      , m_status("Connecting")
+      , m_uri(uri)
+      , m_server("N/A")
+    {
+        serverschema=getServerSchema();
+        std::cout<<serverschema<<std::endl;
         auto alpha=params["alpha"].GetArray();
-        auto tau=params["tau"].GetDouble();
-        obj->xSteps=params["xSteps"].GetInt();
-        auto uSteps=params["uSteps"].GetInt();
-        obj->xMin=params["xMin"].GetDouble();
-        obj->xMax=params["xMax"].GetDouble();
-        auto lambda=params["lambda"].GetDouble();
-        auto q=params["q"].GetDouble();
-        auto alphL=params["alphL"].GetDouble();
-        auto bL=params["bL"].GetDouble();
-        auto sigL=params["sigL"].GetDouble();
-        obj->cf=std::vector<double>(uSteps);
-        std::cout<<"successfully assigned variables"<<std::endl;
+        tau=params["tau"].GetDouble();
+        xSteps=params["xSteps"].GetInt();
+        uSteps=params["uSteps"].GetInt();
+        xMin=params["xMin"].GetDouble();
+        xMax=params["xMax"].GetDouble();
+        lambda=params["lambda"].GetDouble();
+        q=params["q"].GetDouble();
+        alphL=params["alphL"].GetDouble();
+        bL=params["bL"].GetDouble();
+        sigL=params["sigL"].GetDouble();
+        m=alpha.Size(); 
+        cf=std::vector<std::complex<double> >(uSteps, 0.0);
+       //std::cout<<"successfully assigned variables"<<std::endl;
         /**prepare functions for CF inversion*/
         /**function to retreive vector values from JSON*/
         auto retreiveJSONValue=[](const auto& val){
             return val.GetDouble();
-        };
+        }; 
         /**expectation, used for the vasicek MGF*/
-        const auto expectation=vasicek::computeIntegralExpectationLongRunOne(params["y0"].GetArray(), alpha, alpha.Size(), tau, retreiveJSONValue);
-        std::cout<<"successfully computed expectation"<<std::endl;
-        /**variance, used for the vasicek MGF*/
-        const auto variance=vasicek::computeIntegralVarianceVasicek(alpha, params["sigma"].GetArray(), params["rho"].GetArray(), alpha.Size(), tau, retreiveJSONValue);
-        std::cout<<"successfully computed variance"<<std::endl;
-        auto curriedPD=[](const auto& loan){return loan["pd"].GetDouble();}; 
-        auto curriedL=[](const auto& loan){return loan["l"].GetDouble();}; 
-        auto curriedW=[](const auto& loan, const auto& index){return loan["w"][index].GetDouble();};
-        obj->curriedFullCF=creditutilities::getFullCFFn(obj->xMin, obj->xMax,
-            vasicek::getVasicekMFGFn(expectation, variance),//v->value
+        expectation=vasicek::computeIntegralExpectationLongRunOne(params["y0"].GetArray(), alpha, m, tau, retreiveJSONValue);
+        //std::cout<<"successfully computed expectation"<<std::endl;
+        /**variance, used for the vasicek MGF*/ 
+        variance=vasicek::computeIntegralVarianceVasicek(alpha, params["sigma"].GetArray(), params["rho"].GetArray(), m, tau, retreiveJSONValue);
+        //std::cout<<"successfully computed variance"<<std::endl;
+         
+
+        //std::cout<<"end of constructor"<<std::endl;
+    }
+
+    void on_open(client * c, websocketpp::connection_hdl hdl) {
+        m_status = "Open";
+        client::connection_ptr con = c->get_con_from_hdl(hdl);
+        m_server = con->get_response_header("Server");
+        //std::cout<<"opened"<<std::endl;
+        websocketpp::lib::error_code ec;
+        c->send(hdl, std::string("hello"), websocketpp::frame::opcode::text, ec);
+    }
+    void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+        websocketpp::lib::error_code ec;
+        if(!msg->get_payload().compare("terminate")){
+            //std::cout<<"got here"<<std::endl;
+            //std::cout<<msg->get_payload()<<std::endl;
+            std::cout<<cf[0]<<std::endl;
+            std::cout<<cf[uSteps-1]<<std::endl;
+
+            auto density=getDensity();
+            //std::cout<<cf[0]<<std::endl;
+            //std::cout<<cf[uSteps-1]<<std::endl;
+            auto dx=fangoost::computeDX(xSteps, xMin, xMax);
+            std::cout<<"[";
+            for(int i=0; i<density.size()-1;++i){
+                std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
+            }
+            std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
+            return;
+        }
+        rapidjson::Document loans;
+        if(!handleSchema(serverschema.c_str(), msg->get_payload().c_str(), loans)){
+            return;
+        }
+        //std::cout<<"Got passed schema check"<<std::endl;
+        //std::cout<<"Number of loans:"<<loans.Size()<<std::endl;
+        mtx.lock(); 
+
+        cf=creditutilities::getFullCFFn(xMin, xMax,
+            vasicek::getLogVasicekMFGFn(expectation, variance),//v->value
             creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
-            creditutilities::logLPMCF(
-                alpha.Size(),
-                creditutilities::getLGDCFFn(alphL, bL, sigL, tau, bL), 
+            creditutilities::logLPMCF( 
+                m,
+                creditutilities::getLGDCFFn(alphL, bL, sigL, tau, bL),
                 curriedL, curriedPD, curriedW
-            )//u, loans->v
-        );
-        info.GetReturnValue().Set(info.This());
-
-
-
-      //double value = info[0]->IsUndefined() ? 0 : Nan::To<double>(info[0]).FromJust();
-      
-    } else {
-      const int argc = 1;
-      v8::Local<v8::Value> argv[argc] = {info[0]};
-      v8::Local<v8::Function> cons = Nan::New(constructor());
-      info.GetReturnValue().Set(cons->NewInstance(argc, argv));
+            )//u, loans->v, n
+        )(
+            std::move(cf), 
+            loans.GetArray() 
+        ); 
+        
+        mtx.unlock();
+        /*auto density=getDensity();
+        auto dx=fangoost::computeDX(xSteps, xMin, xMax);
+        std::cout<<"[";
+        for(int i=0; i<density.size()-1;++i){
+            std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
+        }
+        std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
+        return;*/
     }
-  }
+    void on_fail(client * c, websocketpp::connection_hdl hdl) {
+        m_status = "Failed";
 
-  static NAN_METHOD(supplyCF) {
-    LoanCF* obj = Nan::ObjectWrap::Unwrap<LoanCF>(info.Holder());
-    //info.GetReturnValue().Set(obj->handle());
-    char* loanJson = (char*) node::Buffer::Data(info[0]->ToObject());
-    rapidjson::Document loans;
-    if(!handleSchema(obj->serverschema.c_str(), loanJson, loans)){
-        return;
+        client::connection_ptr con = c->get_con_from_hdl(hdl);
+        m_server = con->get_response_header("Server");
+        m_error_reason = con->get_ec().message();
     }
-    obj->cf=obj->curriedFullCF(
-        std::move(obj->cf), 
-        loans.GetArray()
-    );   
     
-  }
-
-  static NAN_METHOD(computeDensity) {
-      Nan:: HandleScope scope;
-
-    LoanCF* obj = Nan::ObjectWrap::Unwrap<LoanCF>(info.Holder());
-    std::vector<double> density=fangoost::computeInvDiscrete(obj->xSteps, obj->xMin, obj->xMax, std::move(obj->cf));
-    int densitySize=density.size();
-    v8::Local<v8::Array> array = Nan::New<v8::Array>(densitySize);
-    for(int i=0; i<densitySize;++i){
-        Nan::Set(array, i, Nan::New<v8::Number>(density[i]));
+    void on_close(client * c, websocketpp::connection_hdl hdl) {
+        m_status = "Closed";
+        client::connection_ptr con = c->get_con_from_hdl(hdl);
+        std::stringstream s;
+        s << "close code: " << con->get_remote_close_code() << " (" 
+          << websocketpp::close::status::get_string(con->get_remote_close_code()) 
+          << "), close reason: " << con->get_remote_close_reason();
+        m_error_reason = s.str();
     }
-    info.GetReturnValue().Set(array);
-  }
+    std::vector<double> getDensity(){
+        return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, std::move(cf));
+    }
 
-  static inline Nan::Persistent<v8::Function> & constructor() {
-    static Nan::Persistent<v8::Function> my_constructor;
-    return my_constructor;
-  }
-  std::vector<double > cf;//(uSteps);
-  std::function<std::vector<double>(std::vector<double>&&, const rapidjson::Value&)> curriedFullCF;
-  //std::function<void()> curriedFullCF;
-  double xMin;
-  double xMax;
-  int xSteps;
+    websocketpp::connection_hdl get_hdl() const {
+        return m_hdl;
+    }
+    
+    int get_id() const {
+        return m_id;
+    }
+    
+    std::string get_status() const {
+        return m_status;
+    }
+private:
+    int m_id;
+    websocketpp::connection_hdl m_hdl;
+    std::string m_status;
+    std::string m_uri;
+    std::string m_server;
+    std::string m_error_reason;
     std::string serverschema;
-  //double value_;
+    int xSteps;
+    int uSteps;
+    double xMin;
+    double xMax;
+    std::vector<double> expectation;
+    std::vector<std::vector<double> > variance;
+
+    int m;
+    double tau;
+    double lambda;
+    double q;
+    double alphL;
+    double bL;
+    double sigL;
+
+
+
+    std::vector<std::complex<double> > cf;
+
+    //std::function<std::vector<double>(std::vector<double>&&, const rapidjson::Value&)> curriedFullCF;
+
+
 };
-NODE_MODULE(objectwrapper, LoanCF::Init);
+
+
+class websocket_endpoint {
+public:
+    websocket_endpoint () : m_next_id(0) {
+        m_endpoint.clear_access_channels(websocketpp::log::alevel::all);
+        m_endpoint.clear_error_channels(websocketpp::log::elevel::all);
+        m_endpoint.init_asio();
+        m_endpoint.start_perpetual();
+        //m_thread.reset(new websocketpp::lib::thread(&client::run, &m_endpoint));
+    }
+    ~websocket_endpoint() {
+        m_endpoint.stop_perpetual();
+    }
+    int connect(std::string const & uri, const rapidjson::Value& inputJson) {
+        websocketpp::lib::error_code ec;
+
+        client::connection_ptr con = m_endpoint.get_connection(uri, ec);
+
+        if (ec) {
+            std::cout << "> Connect initialization error: " << ec.message() << std::endl;
+            return -1;
+        }
+
+        int new_id = m_next_id++;
+        function_ptr=websocketpp::lib::make_shared<connection_functions>(new_id, con->get_handle(), uri, inputJson);
+
+        con->set_open_handler(websocketpp::lib::bind(
+            &connection_functions::on_open,
+            function_ptr,
+            &m_endpoint,
+            websocketpp::lib::placeholders::_1
+        ));
+        con->set_fail_handler(websocketpp::lib::bind(
+            &connection_functions::on_fail,
+            function_ptr,
+            &m_endpoint,
+            websocketpp::lib::placeholders::_1
+        ));
+        con->set_close_handler(websocketpp::lib::bind(
+            &connection_functions::on_close,
+            function_ptr,
+            &m_endpoint,
+            websocketpp::lib::placeholders::_1
+        ));
+        con->set_message_handler(websocketpp::lib::bind(
+            &connection_functions::on_message,
+            function_ptr,
+            websocketpp::lib::placeholders::_1,
+            websocketpp::lib::placeholders::_2
+        ));
+
+        m_endpoint.connect(con);
+
+        return new_id;
+    }
+    void run(){
+        m_endpoint.run();
+    }
+    void close(int id, websocketpp::close::status::value code, std::string reason) {
+        websocketpp::lib::error_code ec;
+        m_endpoint.close(function_ptr->get_hdl(), code, reason, ec);
+        if (ec) {
+            std::cout << "> Error initiating close: " << ec.message() << std::endl;
+        }
+    }
+    /*std::string status(){
+        return function_ptr->get_status();
+    }
+    std::vector<double> getDensity(){
+        return function_ptr->getDensity();
+    }*/
+private:
+    connection_functions::ptr function_ptr;
+    client m_endpoint;
+    int m_next_id;
+};
+
+int main(int argc, char* argv[]){
+    if(!ensureEnoughArgs(argc)){
+        std::cout<<"not enough args"<<std::endl;
+        return 0;
+    }
+    rapidjson::Document parms;
+    /**Note!  handleSchema modifies parms*/
+    if(!handleSchema(getInputSchema().c_str(), argv[1], parms)){
+        return 0;
+    }
+    websocket_endpoint endpoint;
+    int id=endpoint.connect(
+        parms["url"].GetString(), 
+        parms["params"].GetObject()
+    );
+    //std::cout<<"this is the connection id: "<<id<<std::endl;
+    endpoint.run();
+    /*while(!endpoint.status().compare("open")) { //returns zero when equal
+        std::cout<<endpoint.status()<<std::endl;
+        sleep(1);//might want this to be less at some point
+    }*/
+    
+}
+
+

@@ -23,9 +23,15 @@
             'cflags_cc': [
               '-std=c++14',
               '-O3',
-              '-pthread',
-              '-fopenmp'
+              #'-fPIC',
+              #'-pthread',
+              #'-fopenmp'
             ],
+            'cflags':[
+              #'-fopenmp',
+              #'-fPIC',
+              #'-pthread'
+            ]
           }],
         ],
     }#,{

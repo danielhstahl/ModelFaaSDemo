@@ -24,12 +24,14 @@ namespace creditutilities {
         return [xMax,xMin, &getLogVasicekMGF, &logLPMCF, &getLiquidity, du](auto&& cf, const auto& loans){
             /**Note that val+!!!  This is so the cf can be recursively built from multiple runs over loans*/
             return futilities::for_each_parallel(cf, [&](const auto& val, const auto& index){
-                return val+getLogVasicekMGF(logLPMCF(
-                    getLiquidity(
-                        fangoost::getComplexU(fangoost::getU(du, index))
-                    ),
-                    loans
-                ));
+                return val+getLogVasicekMGF(
+                    logLPMCF(
+                        getLiquidity(
+                            fangoost::getComplexU(fangoost::getU(du, index))
+                        ),
+                        loans
+                    )
+                );
             });
         };
     }

@@ -123,9 +123,7 @@ public:
         websocketpp::lib::error_code ec;
         if(!msg->get_payload().compare("terminate")){
             //std::cout<<msg->get_payload()<<std::endl;
-            std::cout<<cf[0][0]<<std::endl;
-            std::cout<<cf[uSteps-1][0]<<std::endl;
-
+           
             auto density=getDensity();
             //std::cout<<cf[0]<<std::endl;
             //std::cout<<cf[uSteps-1]<<std::endl;
@@ -159,14 +157,7 @@ public:
         ); 
         
         mtx.unlock();
-        /*auto density=getDensity();
-        auto dx=fangoost::computeDX(xSteps, xMin, xMax);
-        std::cout<<"[";
-        for(int i=0; i<density.size()-1;++i){
-            std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
-        }
-        std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
-        return;*/
+        /**TODO! Make this message send back to server to let server know you're done.  Or...have the database send the total number with it?*/
     }
     void on_fail(client * c, websocketpp::connection_hdl hdl) {
         m_status = "Failed";
@@ -187,7 +178,6 @@ public:
     }
     std::vector<double> getDensity(){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        /**convert this into computeInvDiscrete...more efficient*/
         return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         }));

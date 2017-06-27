@@ -37,15 +37,7 @@ const generateFakeLoanData=(numLoans, numMacroWeight)=>{
     }
     return loans
 }
-/*app.get('/hello', (req, res)=>{
-    console.log("got here");
-    const data=generateFakeLoanData(100, 3)
-    //console.log(data)
-    res.send(data)//generateFakeLoanData(1000, 3))
-})
-app.listen(3000,  ()=>{
-    console.log('Example app listening on port 3000!')
-})*/
+
 const convertObjToBuffer=obj=>new Buffer.from(JSON.stringify(obj))
 const wss = new WebSocket.Server({ port: 3000 });
 wss.on('connection', ws=>{

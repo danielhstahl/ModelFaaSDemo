@@ -74,22 +74,6 @@ double curriedL(const rapidjson::Value& loan){return loan["l"].GetDouble();}
 
 double curriedW(const rapidjson::Value& loan, const int& index){return loan["w"][index].GetDouble();} 
 
-/**TEMPORARY*/
-struct loan{
-	double pd;
-	//std::function<Complex(const Complex&)> lgdCF;//characteristic function
-	double exposure;
-	std::vector<double> w;
-	loan(double pd_, double exposure_, std::vector<double>&& w_){
-			pd=pd_;
-			exposure=exposure_;
-			w=w_;
-	}
-	loan(){
-    }
-};
-
-
 class connection_functions {
 public:
     typedef websocketpp::lib::shared_ptr<connection_functions> ptr;
@@ -102,7 +86,6 @@ public:
       , m_server("N/A")
     {
         serverschema=getServerSchema();
-        std::cout<<serverschema<<std::endl;
         auto alpha=params["alpha"].GetArray();
         tau=params["tau"].GetDouble();
         xSteps=params["xSteps"].GetInt();
@@ -115,7 +98,7 @@ public:
         bL=params["bL"].GetDouble();
         sigL=params["sigL"].GetDouble();
         m=alpha.Size(); 
-        cf=std::vector<std::complex<double> >(uSteps, 0.0);
+        cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
        //std::cout<<"successfully assigned variables"<<std::endl;
         /**prepare functions for CF inversion*/
         /**function to retreive vector values from JSON*/
@@ -127,27 +110,21 @@ public:
         //std::cout<<"successfully computed expectation"<<std::endl;
         /**variance, used for the vasicek MGF*/ 
         variance=vasicek::computeIntegralVarianceVasicek(alpha, params["sigma"].GetArray(), params["rho"].GetArray(), m, tau, retreiveJSONValue);
-        //std::cout<<"successfully computed variance"<<std::endl;
-         
-
-        //std::cout<<"end of constructor"<<std::endl;
     }
 
     void on_open(client * c, websocketpp::connection_hdl hdl) {
         m_status = "Open";
         client::connection_ptr con = c->get_con_from_hdl(hdl);
         m_server = con->get_response_header("Server");
-        //std::cout<<"opened"<<std::endl;
         websocketpp::lib::error_code ec;
         c->send(hdl, std::string("hello"), websocketpp::frame::opcode::text, ec);
     }
     void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
         websocketpp::lib::error_code ec;
         if(!msg->get_payload().compare("terminate")){
-            //std::cout<<"got here"<<std::endl;
             //std::cout<<msg->get_payload()<<std::endl;
-            std::cout<<cf[0]<<std::endl;
-            std::cout<<cf[uSteps-1]<<std::endl;
+            std::cout<<cf[0][0]<<std::endl;
+            std::cout<<cf[uSteps-1][0]<<std::endl;
 
             auto density=getDensity();
             //std::cout<<cf[0]<<std::endl;
@@ -169,7 +146,7 @@ public:
         mtx.lock(); 
 
         cf=creditutilities::getFullCFFn(xMin, xMax,
-            vasicek::getLogVasicekMFGFn(expectation, variance),//v->value
+            //vasicek::getLogVasicekMFGFn(expectation, variance),//v->value
             creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
             creditutilities::logLPMCF( 
                 m,
@@ -209,7 +186,11 @@ public:
         m_error_reason = s.str();
     }
     std::vector<double> getDensity(){
-        return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, std::move(cf));
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        /**convert this into computeInvDiscrete...more efficient*/
+        return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        }));
     }
 
     websocketpp::connection_hdl get_hdl() const {
@@ -248,7 +229,7 @@ private:
 
 
 
-    std::vector<std::complex<double> > cf;
+    std::vector<std::vector<std::complex<double> > > cf;
 
     //std::function<std::vector<double>(std::vector<double>&&, const rapidjson::Value&)> curriedFullCF;
 

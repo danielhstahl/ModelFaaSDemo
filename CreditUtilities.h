@@ -18,19 +18,22 @@ namespace creditutilities {
         };
     }
 
-    template<typename Number, typename GetVasicekMGF, typename GetLiquidity, typename GetLogLPMCF>
-    auto getFullCFFn(const Number& xMin, const Number& xMax, const GetVasicekMGF& getLogVasicekMGF, const GetLiquidity& getLiquidity, const GetLogLPMCF& logLPMCF){
+    template<typename Number, typename GetLiquidity, typename GetLogLPMCF>
+    auto getFullCFFn(const Number& xMin, const Number& xMax, const GetLiquidity& getLiquidity, const GetLogLPMCF& logLPMCF){
         auto du=fangoost::computeDU(xMin, xMax);
-        return [xMax,xMin, &getLogVasicekMGF, &logLPMCF, &getLiquidity, du](auto&& cf, const auto& loans){
+        return [xMax,xMin, &logLPMCF, &getLiquidity, du](auto&& cf, const auto& loans){ 
             /**Note that val+!!!  This is so the cf can be recursively built from multiple runs over loans*/
-            return futilities::for_each_parallel(cf, [&](const auto& val, const auto& index){
-                return val+getLogVasicekMGF(
+            return futilities::for_each_parallel(cf, [&](const auto& val, const auto& iterateU){
+                return futilities::for_each_parallel(
                     logLPMCF(
                         getLiquidity(
-                            fangoost::getComplexU(fangoost::getU(du, index))
+                            fangoost::getComplexU(fangoost::getU(du, iterateU))
                         ),
                         loans
-                    )
+                    ), 
+                    [&](const auto& result, const auto& iterateY){
+                        return val[iterateY]+result;
+                    }
                 );
             });
         };

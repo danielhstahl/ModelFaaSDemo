@@ -1,0 +1,7 @@
+brew install crosstool-ng
+brew install binutils
+
+edit ~/.profile (not really this doesnt work)
+
+alias objcopy="gobjcopy"
+alias objdump="gobjdump"

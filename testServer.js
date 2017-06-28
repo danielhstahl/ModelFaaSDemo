@@ -56,6 +56,8 @@ wss.on('connection', ws=>{
                 //console.log("no matching message!")
        // }
     });
-    
+    ws.on('close', ()=>{
+        console.log("connection closed")
+    })
     //ws.send('something');
 });

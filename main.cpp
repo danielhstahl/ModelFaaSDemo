@@ -44,9 +44,11 @@ extern "C" {
     extern char _binary_inputschema_json_end;//binary data
     extern char _binary_serverschema_json_start; //binary data
     extern char _binary_serverschema_json_end;//binary data
+    extern char _binary_metaschema_json_start; //binary data
+    extern char _binary_metaschema_json_end;//binary data
 }
 
-
+const double maxPercentLoss=.14;//if more than this, in big trouble
 
 std::mutex mtx;    
 bool ensureEnoughArgs(int argc){
@@ -64,6 +66,12 @@ std::string getServerSchema(){
     char*  schemaItem = &_binary_serverschema_json_start; //is this compile time?
     while ( schemaItem != &_binary_serverschema_json_end ) serverschema+=(*schemaItem++); //is this compile time?
     return serverschema;
+}
+std::string getMetaSchema(){
+    std::string metaschema;
+    char*  schemaItem = &_binary_metaschema_json_start; //is this compile time?
+    while ( schemaItem != &_binary_metaschema_json_end ) metaschema+=(*schemaItem++); //is this compile time?
+    return metaschema;
 }
 
 
@@ -85,7 +93,10 @@ public:
       , m_uri(uri)
       , m_server("N/A")
     {
+        increment=0;
+        numSend=100000;//something large
         serverschema=getServerSchema();
+        metaschema=getMetaSchema();
         auto alpha=params["alpha"].GetArray();
         tau=params["tau"].GetDouble();
         xSteps=params["xSteps"].GetInt();
@@ -117,28 +128,21 @@ public:
         client::connection_ptr con = c->get_con_from_hdl(hdl);
         m_server = con->get_response_header("Server");
         websocketpp::lib::error_code ec;
-        c->send(hdl, std::string("hello"), websocketpp::frame::opcode::text, ec);
+        c->send(hdl, std::string("getSummaryStats"), websocketpp::frame::opcode::text, ec);
     }
     void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
         websocketpp::lib::error_code ec;
-        if(!msg->get_payload().compare("terminate")){
-            //std::cout<<msg->get_payload()<<std::endl;
-           
-            auto density=getDensity();
-            //std::cout<<cf[0]<<std::endl;
-            //std::cout<<cf[uSteps-1]<<std::endl;
-            auto dx=fangoost::computeDX(xSteps, xMin, xMax);
-            std::cout<<"[";
-            for(int i=0; i<density.size()-1;++i){
-                std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
-            }
-            std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
+        rapidjson::Document metadata;
+        if(handleSchema(metaschema.c_str(), msg->get_payload().c_str(), metadata, true)){
+            numSend=metadata["numSend"].GetInt();
+            xMin=-metadata["exposure"].GetDouble()*maxPercentLoss;
             return;
         }
         rapidjson::Document loans;
         if(!handleSchema(serverschema.c_str(), msg->get_payload().c_str(), loans)){
             return;
         }
+        
         //std::cout<<"Got passed schema check"<<std::endl;
         //std::cout<<"Number of loans:"<<loans.Size()<<std::endl;
         mtx.lock(); 
@@ -157,7 +161,20 @@ public:
         ); 
         
         mtx.unlock();
-        /**TODO! Make this message send back to server to let server know you're done.  Or...have the database send the total number with it?*/
+        increment++;
+        /**if done sending*/
+        if(numSend==increment){
+            auto density=getDensity();
+            auto dx=fangoost::computeDX(xSteps, xMin, xMax);
+            std::cout<<"[";
+            for(int i=0; i<density.size()-1;++i){
+                std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
+            }
+            std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
+            m_status="done";
+            return;
+            
+        }
     }
     void on_fail(client * c, websocketpp::connection_hdl hdl) {
         m_status = "Failed";
@@ -202,6 +219,7 @@ private:
     std::string m_server;
     std::string m_error_reason;
     std::string serverschema;
+    std::string metaschema;
     int xSteps;
     int uSteps;
     double xMin;
@@ -216,7 +234,8 @@ private:
     double alphL;
     double bL;
     double sigL;
-
+    int numSend;
+    int increment;
 
 
     std::vector<std::vector<std::complex<double> > > cf;
@@ -226,7 +245,7 @@ private:
 
 };
 
-
+/**todo! reformat this to make more sense from a workflow perspective.  Eg, have ability to close after done*/
 class websocket_endpoint {
 public:
     websocket_endpoint () : m_next_id(0) {

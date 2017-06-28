@@ -43,15 +43,21 @@ const wss = new WebSocket.Server({ port: 3000 });
 wss.on('connection', ws=>{
     console.log("Connected")
     ws.on('message', message=>{
+       // switch(message){
+            //case "getSummaryStats":
+        ws.send(convertObjToBuffer({numLoans, exposure:roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend}))
         
+    //case "getLoans":
         for(i=0; i<numSend;++i){
             ws.send(convertObjToBuffer(generateFakeLoanData(sendPer, testJson.params.alpha.length)))
         }
-        //
-        setTimeout(()=>{
-            ws.send("terminate")
-        }, 100000)//100 seconds*/
+        //return
+            //default:
+                //console.log("no matching message!")
+       // }
     });
-    
+    ws.on('close', ()=>{
+        console.log("connection closed")
+    })
     //ws.send('something');
 });

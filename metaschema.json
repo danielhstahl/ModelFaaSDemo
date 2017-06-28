@@ -1,0 +1,1 @@
+{"$schema":"http://json-schema.org/draft-04/schema#","type":"object","properties":{"numLoans":{"type":"number"},"exposure":{"type":"number"}, "numSend":{"type":"number"}},"additionalProperties":false}

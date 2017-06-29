@@ -160,19 +160,20 @@ TEST_CASE("ensure total inversion returns correctly", "[CreditUtilities]"){
     double sigL=.3;
     double tau=1;
     int m=1;
+    int xUnits=8;
+    int uUnits=8;
     std::vector<loan> testLoans;
     std::vector<double> w(1);
     w[0]=1;
     testLoans.emplace_back(loan(.02, 5000.0, std::move(w)));
-    std::vector<std::complex<double> > tmpCf(8, 0);
+    std::vector<std::vector<std::complex<double> > > tmpCf(uUnits, std::vector<std::complex<double> >(m, 0));
     auto tempxmin=0.0;
     auto tempxmax=1.0;
-    std::vector<double> expectation(1, 0);
+    std::vector<double> expectation(m, 0);
     expectation[0]=.546827;
-    std::vector<std::vector<double> > variance(1, std::vector<double>(1, 0));
+    std::vector<std::vector<double> > variance(m, std::vector<double>(m, 0));
     variance[0][0]=.0258917;
     tmpCf=creditutilities::getFullCFFn(tempxmin, tempxmax,
-        vasicek::getLogVasicekMFGFn(expectation, variance),
         creditutilities::getLiquidityRiskFn(0.0, 0.0),
         creditutilities::logLPMCF( 
             m,
@@ -185,7 +186,10 @@ TEST_CASE("ensure total inversion returns correctly", "[CreditUtilities]"){
         std::move(tmpCf), 
         testLoans 
     );
-    auto test=fangoost::computeInvDiscreteLog(8, tempxmin, tempxmax, std::move(tmpCf));
+    auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+    auto test=fangoost::computeInvDiscreteLog(xUnits, tempxmin, tempxmax, futilities::for_each_parallel(0, uUnits, [&](const auto& index){
+        return vasicekLogFN(tmpCf[index]);
+    }));
     /**these numbers are based off the results in "creditRisk" repo*/
     std::vector<double> expected(8, 0.0);
     expected[0]=14.8478;

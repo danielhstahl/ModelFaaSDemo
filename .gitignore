@@ -6,4 +6,5 @@ httpCreditRisk
 test
 node_modules
 build
+results.json
 *.plist

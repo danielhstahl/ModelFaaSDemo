@@ -50,7 +50,7 @@ const char *metaSchema =
 
 const double maxPercentLoss=.14;//if more than this, in big trouble
 
-std::mutex mtx;    
+//std::mutex mtx;    
 bool ensureEnoughArgs(int argc){
     return argc>1?true:false;
 }

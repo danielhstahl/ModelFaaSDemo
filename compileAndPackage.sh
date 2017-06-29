@@ -15,9 +15,9 @@ function editMake {
 }
 function undoMake {
 	if [ "$(uname)" == "Darwin" ]; then 
-		sed -i '' -e "s#STATIC=-static-libstdc++##g" makefile 
-		sed -i '' -e "/^\s*$/d" makefile
-		sed -i '' -e "s#\./#\.\./#g" makefile 
+		gsed -i '' -e "s#STATIC=-static-libstdc++##g" makefile 
+		gsed -i '' -e "/^\s*$/d" makefile
+		gsed -i '' -e "s#\./#\.\./#g" makefile 
 	else
 		sed -i "s#STATIC=-static-libstdc++##g" makefile 
 		sed -i "/^\s*$/d" makefile
@@ -35,6 +35,7 @@ function compile {
 cloneAndCheckout FunctionalUtilities 
 cloneAndCheckout FangOost 
 cloneAndCheckout Vasicek 
+git clone https://github.com/zaphoyd/websocketpp
 git clone https://github.com/miloyip/rapidjson
 git clone https://github.com/chriskohlhoff/asio
 compile 

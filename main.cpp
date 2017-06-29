@@ -35,14 +35,18 @@
 typedef websocketpp::client<websocketpp::config::asio_client> client;
 
 #include <iostream>
-extern "C" {
-    extern char _binary_inputschema_json_start; //binary data
-    extern char _binary_inputschema_json_end;//binary data
-    extern char _binary_serverschema_json_start; //binary data
-    extern char _binary_serverschema_json_end;//binary data
-    extern char _binary_metaschema_json_start; //binary data
-    extern char _binary_metaschema_json_end;//binary data
-}
+
+/**this retrieves data in text file*/
+const char *inputSchema =
+#include "inputschema.json"//may have to use text
+;
+const char *serverSchema =
+#include "serverschema.json"//may have to use text
+;
+const char *metaSchema =
+#include "metaschema.json"//may have to use text
+;
+
 
 const double maxPercentLoss=.14;//if more than this, in big trouble
 
@@ -50,26 +54,6 @@ std::mutex mtx;
 bool ensureEnoughArgs(int argc){
     return argc>1?true:false;
 }
-
-std::string getInputSchema(){
-    std::string inputschema;
-    char*  schemaItem = &_binary_inputschema_json_start; //is this compile time?
-    while ( schemaItem != &_binary_inputschema_json_end ) inputschema+=(*schemaItem++); //is this compile time?
-    return inputschema;
-}
-std::string getServerSchema(){
-    std::string serverschema;
-    char*  schemaItem = &_binary_serverschema_json_start; //is this compile time?
-    while ( schemaItem != &_binary_serverschema_json_end ) serverschema+=(*schemaItem++); //is this compile time?
-    return serverschema;
-}
-std::string getMetaSchema(){
-    std::string metaschema;
-    char*  schemaItem = &_binary_metaschema_json_start; //is this compile time?
-    while ( schemaItem != &_binary_metaschema_json_end ) metaschema+=(*schemaItem++); //is this compile time?
-    return metaschema;
-}
-
 
 double curriedPD(const rapidjson::Value& loan){return loan["pd"].GetDouble();}
 
@@ -88,8 +72,6 @@ public:
         m_endpoint.start_perpetual();
         increment=0;
         numSend=100000;//something large
-        serverschema=getServerSchema();
-        metaschema=getMetaSchema();
         auto alpha=params["alpha"].GetArray();
         tau=params["tau"].GetDouble();
         xSteps=params["xSteps"].GetInt();
@@ -164,16 +146,15 @@ public:
     void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
         websocketpp::lib::error_code ec;
         rapidjson::Document metadata;
-        if(handleSchema(metaschema.c_str(), msg->get_payload().c_str(), metadata, true)){
+        if(handleSchema(metaSchema, msg->get_payload().c_str(), metadata)){
             numSend=metadata["numSend"].GetInt();
             xMin=-metadata["exposure"].GetDouble()*maxPercentLoss;
             return;
         }
         rapidjson::Document loans;
-        if(!handleSchema(serverschema.c_str(), msg->get_payload().c_str(), loans)){
+        if(!handleSchema(serverSchema, msg->get_payload().c_str(), loans)){
             return;
         }
-        
         /**it appears I don't need this lock...if receive segmentation errors...look here first*/
         //mtx.lock(); 
 
@@ -296,7 +277,7 @@ int main(int argc, char* argv[]){
     }
     rapidjson::Document parms;
     /**Note!  handleSchema modifies parms*/
-    if(!handleSchema(getInputSchema().c_str(), argv[1], parms)){
+    if(!handleSchema(inputSchema, argv[1], parms)){
         return 0;
     }
     websocket_endpoint endpoint(

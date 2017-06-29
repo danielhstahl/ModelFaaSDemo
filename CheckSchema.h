@@ -32,13 +32,19 @@ bool handleSchema(const char* schemaJson, const char* inputJson, rapidjson::Docu
     if (!d.Accept(validator)) {
         // Input JSON is invalid according to the schema
         // Output diagnostic information
-        rapidjson::StringBuffer sb;
-        validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
-        if(!supressError){
-            std::cout<<"Invalid schema: %s\n"<<sb.GetString()<<std::endl;
-            printf("Invalid keyword: %s\n", validator.GetInvalidSchemaKeyword());
+         if(!supressError){
+            rapidjson::StringBuffer sb;
+            validator.GetInvalidSchemaPointer().StringifyUriFragment(sb);
+       
+            std::cout<<"Invalid schema: "<<sb.GetString()<<std::endl;
+            std::cout<<"Invalid keyword: "<< validator.GetInvalidSchemaKeyword()<<std::endl;
+
+            sb.Clear();
+            validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
+            std::cout<<"Invalid document: "<<sb.GetString()<<std::endl;
+            sb.Clear();
         }
-        sb.Clear();
+        
         //validator.GetInvalidDocumentPointer().StringifyUriFragment(sb);
             
         return false;

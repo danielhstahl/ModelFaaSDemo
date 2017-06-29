@@ -1,9 +1,5 @@
 const WebSocket = require('ws');
 const testJson=require('./test.json')
-/*const express = require('express')
-const bodyParser=require('body-parser')
-const app = express()
-app.use(bodyParser.json())*/
 const numSend=100
 const sendPer=1000
 const numLoans=numSend*sendPer;
@@ -43,21 +39,12 @@ const wss = new WebSocket.Server({ port: 3000 });
 wss.on('connection', ws=>{
     console.log("Connected")
     ws.on('message', message=>{
-       // switch(message){
-            //case "getSummaryStats":
         ws.send(convertObjToBuffer({numLoans, exposure:roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend}))
-        
-    //case "getLoans":
         for(i=0; i<numSend;++i){
             ws.send(convertObjToBuffer(generateFakeLoanData(sendPer, testJson.params.alpha.length)))
         }
-        //return
-            //default:
-                //console.log("no matching message!")
-       // }
     });
     ws.on('close', ()=>{
         console.log("connection closed")
     })
-    //ws.send('something');
 });

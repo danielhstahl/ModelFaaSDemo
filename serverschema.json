@@ -1,1 +1,1 @@
-{"$schema":"http://json-schema.org/draft-04/schema#","type":"array","items":{"type":"object","properties":{"w":{"type":"array","items":{"type":"number"}},"pd":{"type":"number"},"l":{"type":"number"}}},"additionalProperties":false}
+R"({"$schema":"http://json-schema.org/draft-04/schema#","type":"array","items":{"type":"object","properties":{"w":{"type":"array","items":{"type":"number"}},"pd":{"type":"number"},"l":{"type":"number"}}},"additionalProperties":false})"

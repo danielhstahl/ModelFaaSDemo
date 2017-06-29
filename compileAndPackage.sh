@@ -6,8 +6,8 @@ function cloneAndCheckout {
 }
 function editMake {
 	if [ "$(uname)" == "Darwin" ]; then 
-		sed -i '' -e "1s/^/STATIC=-static-libstdc++^M/" makefile 
-		sed -i '' -e "s#\.\./#./#g" makefile 
+		gsed -i '' -e "1s/^/STATIC=-static-libstdc++\n/" makefile 
+		gsed -i '' -e "s#\.\./#./#g" makefile 
 	else 
 		sed -i  "1s/^/STATIC=-static-libstdc++\n/" makefile 
 		sed -i  "s#\.\./#./#g" makefile 

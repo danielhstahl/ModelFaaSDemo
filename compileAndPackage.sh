@@ -5,7 +5,7 @@ function cloneAndCheckout {
 	cd ..
 }
 function editMake {
-	if [ $(shell uname -s)="Darwin" ]; then 
+	if [ "$(uname)" == "Darwin" ]; then 
 		sed -i '' -e "1s/^/STATIC=-static-libstdc++^M/" makefile 
 		sed -i '' -e "s#\.\./#./#g" makefile 
 	else 
@@ -14,7 +14,7 @@ function editMake {
 	fi
 }
 function undoMake {
-	if [ $(shell uname -s)="Darwin" ]; then 
+	if [ "$(uname)" == "Darwin" ]; then 
 		sed -i '' -e "s#STATIC=-static-libstdc++##g" makefile 
 		sed -i '' -e "/^\s*$/d" makefile
 		sed -i '' -e "s#\./#\.\./#g" makefile 

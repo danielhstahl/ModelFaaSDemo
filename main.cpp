@@ -146,7 +146,7 @@ public:
     void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
         websocketpp::lib::error_code ec;
         rapidjson::Document metadata;
-        if(handleSchema(metaSchema, msg->get_payload().c_str(), metadata)){
+        if(handleSchema(metaSchema, msg->get_payload().c_str(), metadata, true)){
             numSend=metadata["numSend"].GetInt();
             xMin=-metadata["exposure"].GetDouble()*maxPercentLoss;
             return;

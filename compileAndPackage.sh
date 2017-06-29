@@ -5,13 +5,13 @@ function cloneAndCheckout {
 	cd ..
 }
 function editMake {
-	sed -i "1s/^/STATIC=-static-libstdc++\n/" makefile 
-	sed -i "s#\.\./#./#g" makefile 
+	sed -i '' -e "1s/^/STATIC=-static-libstdc++\n/" makefile 
+	sed -i '' -e "s#\.\./#./#g" makefile 
 }
 function undoMake {
-	sed -i "s#STATIC=-static-libstdc++##g" makefile 
-	sed -i "/^\s*$/d" makefile
-	sed -i "s#\./#\.\./#g" makefile 
+	sed -i '' -e "s#STATIC=-static-libstdc++##g" makefile 
+	sed -i '' -e "/^\s*$/d" makefile
+	sed -i '' -e "s#\./#\.\./#g" makefile 
 }
 function compile {
 	editMake

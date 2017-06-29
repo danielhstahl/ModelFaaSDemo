@@ -9,7 +9,7 @@ Run `./compileAndPackage.sh`.  This will also compile and run the unit tests.  T
 
 ### Mac
 
-It should work when using a gcc compatable with fopenmp...install using homebrew.  `brew install gcc --without-multilib`
+It should work when using a gcc compatable with fopenmp...install using homebrew.  `brew install gcc --without-multilib`.  Then follow the linux commands.
 
 
 ## Workarounds

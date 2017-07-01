@@ -135,29 +135,13 @@ public:
         m_endpoint.connect(con);
         return 1;
     }
-    void on_open(client * c, websocketpp::connection_hdl hdl) {
-        m_status = "Open";
-        client::connection_ptr con = c->get_con_from_hdl(hdl);
-       
-        m_server = con->get_response_header("Server");
-        websocketpp::lib::error_code ec;
-        c->send(hdl, std::string("getSummaryStats"), websocketpp::frame::opcode::text, ec);
-    }
-    void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
-        websocketpp::lib::error_code ec;
-        rapidjson::Document metadata;
-        if(handleSchema(metaSchema, msg->get_payload().c_str(), metadata, true)){
-            numSend=metadata["numSend"].GetInt();
-            xMin=-metadata["exposure"].GetDouble()*maxPercentLoss;
-            return;
-        }
+    bool handleLoans(client::message_ptr msg){
         rapidjson::Document loans;
-        if(!handleSchema(serverSchema, msg->get_payload().c_str(), loans)){
-            return;
+        if(!handleSchema(serverSchema, msg->get_payload().c_str(), loans, true)){
+            return false;
         }
         /**it appears I don't need this lock...if receive segmentation errors...look here first*/
         //mtx.lock(); 
-
         cf=creditutilities::getFullCFFn(xMin, xMax,
             creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
             creditutilities::logLPMCF( 
@@ -184,9 +168,33 @@ public:
             std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
             m_status="done";
             close(websocketpp::close::status::normal, "end of program");
-            return;
-            
         }
+        return true;
+    }
+    bool handleMetaLoans(client::message_ptr msg){
+        websocketpp::lib::error_code ec;
+        rapidjson::Document metadata;
+        if(!handleSchema(metaSchema, msg->get_payload().c_str(), metadata, true)){
+            return false;
+        }
+        numSend=metadata["numSend"].GetInt();
+        xMin=-metadata["exposure"].GetDouble()*maxPercentLoss;
+        return true;
+    }
+    void on_open(client * c, websocketpp::connection_hdl hdl) {
+        m_status = "Open";
+        client::connection_ptr con = c->get_con_from_hdl(hdl);
+       
+        m_server = con->get_response_header("Server");
+        websocketpp::lib::error_code ec;
+        c->send(hdl, std::string("getSummaryStats"), websocketpp::frame::opcode::text, ec);
+    }
+    void on_message(websocketpp::connection_hdl hdl, client::message_ptr msg) {
+        if(!handleLoans(msg)){
+            handleMetaLoans(msg);
+        }
+
+        
     }
     void on_fail(client * c, websocketpp::connection_hdl hdl) {
         m_status = "Failed";

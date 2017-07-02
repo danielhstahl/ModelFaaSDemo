@@ -10,9 +10,8 @@
 #define ASIO_HAS_STD_SHARED_PTR
 #define ASIO_HAS_STD_TYPE_TRAITS
 
-
+#include <iostream>
 #include "CreditUtilities.h"
-#include <functional>
 #include "document.h" //rapidjson
 #include "writer.h" //rapidjson
 #include "stringbuffer.h" //rapidjson
@@ -20,33 +19,25 @@
 #include "error/en.h" //rapidjson
 #include "FangOost.h"
 #include "FunctionalUtilities.h"
-#include "Vasicek.h"
-#include <mutex>   
+#include "Vasicek.h"  
 #include "CheckSchema.h" //handleSchema
 #include <vector>
 #include <complex>
-#include <stdio.h> //for binary data
-#include <set>
 #include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/client.hpp>
 
-#include <typeinfo> //for checking types..remove in production
-
 typedef websocketpp::client<websocketpp::config::asio_client> client;
-
-#include <iostream>
 
 /**this retrieves data in text file*/
 const char *inputSchema =
-#include "inputschema.json"//may have to use text
+#include "inputschema.json"
 ;
 const char *serverSchema =
-#include "serverschema.json"//may have to use text
+#include "serverschema.json"
 ;
 const char *metaSchema =
-#include "metaschema.json"//may have to use text
+#include "metaschema.json"
 ;
-
 
 const double maxPercentLoss=.14;//if more than this, in big trouble
 
@@ -57,11 +48,9 @@ bool ensureEnoughArgs(int argc){
 
 double curriedPD(const rapidjson::Value& loan){return loan["pd"].GetDouble();}
 
-
 double curriedL(const rapidjson::Value& loan){return loan["l"].GetDouble();} 
 
 double curriedW(const rapidjson::Value& loan, const int& index){return loan["w"][index].GetDouble();} 
-
 
 class websocket_endpoint {
 public:
@@ -84,6 +73,7 @@ public:
         bL=params["bL"].GetDouble();
         sigL=params["sigL"].GetDouble();
         m=alpha.Size(); 
+        //cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
         cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
         /**prepare functions for CF inversion*/
         /**function to retreive vector values from JSON*/
@@ -184,7 +174,6 @@ public:
     void on_open(client * c, websocketpp::connection_hdl hdl) {
         m_status = "Open";
         client::connection_ptr con = c->get_con_from_hdl(hdl);
-       
         m_server = con->get_response_header("Server");
         websocketpp::lib::error_code ec;
         c->send(hdl, std::string("getSummaryStats"), websocketpp::frame::opcode::text, ec);
@@ -193,8 +182,6 @@ public:
         if(!handleLoans(msg)){
             handleMetaLoans(msg);
         }
-
-        
     }
     void on_fail(client * c, websocketpp::connection_hdl hdl) {
         m_status = "Failed";
@@ -269,13 +256,7 @@ private:
     int numSend;
     /**this counts how many times have received messages.  once this equals numSend, the program aggregates, cleans up, and exits*/
     int increment;
-
-
     std::vector<std::vector<std::complex<double> > > cf;
-
-
-
-
 };
 
 int main(int argc, char* argv[]){

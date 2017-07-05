@@ -73,7 +73,6 @@ public:
         bL=params["bL"].GetDouble();
         sigL=params["sigL"].GetDouble();
         m=alpha.Size(); 
-        //cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
         cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
         /**prepare functions for CF inversion*/
         /**function to retreive vector values from JSON*/
@@ -274,7 +273,7 @@ int main(int argc, char* argv[]){
         parms["params"].GetObject()
     );
     int id=endpoint.connect();
-    if(id==-1){
+    if(id==-1){//then something went wrong
         return 0;
     }
     endpoint.run();

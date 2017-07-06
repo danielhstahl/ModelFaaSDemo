@@ -1,7 +1,5 @@
 INCLUDES= -I../FangOost -I../FunctionalUtilities -I../rapidjson/include/rapidjson -I../Vasicek -I../websocketpp -I../asio/asio/include
 GCCVAL=g++
-OBJC=objcopy
-TYPBIN=elf64-x86-64
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)

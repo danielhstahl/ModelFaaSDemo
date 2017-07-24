@@ -12,6 +12,7 @@
 
 #include <iostream>
 #include "CreditUtilities.h"
+#include "CFDistUtilities.h"
 #include "document.h" //rapidjson
 #include "writer.h" //rapidjson
 #include "stringbuffer.h" //rapidjson
@@ -148,13 +149,15 @@ public:
 
         /**if done sending*/
         if(numSend==increment){
-            auto density=getDensity();
+            auto VaR=getVaR(.01);//.9997
+            std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
+            /*auto density=getDensity();
             auto dx=fangoost::computeDX(xSteps, xMin, xMax);
             std::cout<<"[";
             for(int i=0; i<density.size()-1;++i){
                 std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
             }
-            std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;
+            std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;*/
             m_status="done";
             close(websocketpp::close::status::normal, "end of program");
         }
@@ -202,6 +205,21 @@ public:
         return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         }));
+    }
+
+    double getVaR(double alpha){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        double prec=.001;//this seems to work pretty well
+        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
+    }
+    double getES(double alpha){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        double prec=10;//this may be too large...but the dollar amount is so large
+        return cfdistutilities::computeESDiscrete(alpha, 10.0, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
     }
     void run(){
         m_endpoint.run();

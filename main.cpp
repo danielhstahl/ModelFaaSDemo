@@ -53,6 +53,98 @@ double curriedL(const rapidjson::Value& loan){return loan["l"].GetDouble();}
 
 double curriedW(const rapidjson::Value& loan, const int& index){return loan["w"][index].GetDouble();} 
 
+
+struct CreditRiskBatch{
+private:
+    std::vector<std::vector<std::complex<double> > > cf;
+    int xSteps;
+    int uSteps;
+    double xMin;
+    double xMax;
+    std::vector<double> expectation;
+    std::vector<std::vector<double> > variance;
+    /**number of macro variables*/
+    int m;
+    /**time horizon*/
+    double tau;
+    /**Liquidity parameters*/
+    double lambda;
+    double q;
+    /**CIR/LGD CF parameters*/
+    double alphL;
+    double bL;
+    double sigL;
+public:
+    CreditRiskBatch(int uSteps_, int xSteps_, double tau_){
+        xSteps=xSteps_;
+        uSteps=uSteps_;
+        tau=tau_;
+       
+    }
+    void setXRange(double xMin_, double xMax_){
+        xMin=xMin_;
+        xMax=xMax_;
+        //m=numSystemic; 
+    }
+    void setLiquidityParameters(double lambda_, double q_){
+        lambda=lambda_;
+        q=q_;
+    }
+    void setLGDParameters(double alphL_, double bL_, double sigL_){
+        alphL=alphL_;
+        bL=bL_;
+        sigL=sigL_;
+    }
+    template<typename Array, typename TwoDArray>
+    void setSystemicParameters(const Array& y0, const Array& sigma, const Array& alpha, const TwoDArray& rho){
+        m=alpha.Size();
+        /**function to retreive vector values from JSON*/
+        auto retreiveJSONValue=[](const auto& val){
+            return val.GetDouble();
+        };
+        /**expectation, used for the vasicek MGF*/
+        expectation=vasicek::computeIntegralExpectationLongRunOne(y0, alpha, m, tau, retreiveJSONValue);
+        /**variance, used for the vasicek MGF*/ 
+        variance=vasicek::computeIntegralVarianceVasicek(alpha, sigma, rho, m, tau, retreiveJSONValue);
+        cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
+    }
+    template<typename Array>
+    void nextBatch(const Array& loans){
+        cf=creditutilities::getFullCFFn(xMin, xMax,
+            creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
+            creditutilities::logLPMCF( 
+                m,
+                creditutilities::getLGDCFFn(alphL, bL, sigL, tau, bL),
+                curriedL, curriedPD, curriedW
+            )//u, loans->v, n
+        )(
+            std::move(cf), 
+            loans
+        ); 
+    }
+    std::vector<double> getDensity(){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        }));
+    }
+    double getVaR(double alpha){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        double prec=.001;//this seems to work pretty well
+        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
+    }
+    double getES(double alpha){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        double prec=10;//this may be too large...but the dollar amount is so large
+        return cfdistutilities::computeESDiscrete(alpha, 10.0, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
+    }
+};
+
+
 class websocket_endpoint {
 public:
     websocket_endpoint (std::string uri, const rapidjson::Value& params): m_status("Connecting"), m_uri(uri), m_server("N/A") {
@@ -62,31 +154,30 @@ public:
         m_endpoint.start_perpetual();
         increment=0;
         numSend=100000;//something large
-        auto alpha=params["alpha"].GetArray();
-        tau=params["tau"].GetDouble();
-        xSteps=params["xSteps"].GetInt();
-        uSteps=params["uSteps"].GetInt();
-        xMin=params["xMin"].GetDouble();
-        xMax=params["xMax"].GetDouble();
-        lambda=params["lambda"].GetDouble();
-        q=params["q"].GetDouble();
-        alphL=params["alphL"].GetDouble();
-        bL=params["bL"].GetDouble();
-        sigL=params["sigL"].GetDouble();
-        m=alpha.Size(); 
-        cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
-        /**prepare functions for CF inversion*/
-        /**function to retreive vector values from JSON*/
-        auto retreiveJSONValue=[](const auto& val){
-            return val.GetDouble();
-        }; 
-        /**expectation, used for the vasicek MGF*/
-        expectation=vasicek::computeIntegralExpectationLongRunOne(params["y0"].GetArray(), alpha, m, tau, retreiveJSONValue);
-        /**variance, used for the vasicek MGF*/ 
-        variance=vasicek::computeIntegralVarianceVasicek(alpha, params["sigma"].GetArray(), params["rho"].GetArray(), m, tau, retreiveJSONValue);
+        batchCF=new CreditRiskBatch(
+            params["uSteps"].GetInt(),
+            params["xSteps"].GetInt(),
+            params["tau"].GetDouble()
+        );
+        batchCF->setLiquidityParameters(
+            params["lambda"].GetDouble(), 
+            params["q"].GetDouble()
+        );
+        batchCF->setLGDParameters(
+            params["alphL"].GetDouble(),
+            params["bL"].GetDouble(),
+            params["sigL"].GetDouble()
+        );
+        batchCF->setSystemicParameters(
+            params["y0"].GetArray(),
+            params["sigma"].GetArray(),
+            params["alpha"].GetArray(),
+            params["rho"].GetArray()
+        );
     }
     ~websocket_endpoint() {
         m_endpoint.stop_perpetual();
+        delete batchCF;
     }
     int connect() {
         websocketpp::lib::error_code ec;
@@ -130,26 +221,12 @@ public:
         if(!handleSchema(serverSchema, msg->get_payload().c_str(), loans, true)){
             return false;
         }
-        /**it appears I don't need this lock...if receive segmentation errors...look here first*/
-        //mtx.lock(); 
-        cf=creditutilities::getFullCFFn(xMin, xMax,
-            creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
-            creditutilities::logLPMCF( 
-                m,
-                creditutilities::getLGDCFFn(alphL, bL, sigL, tau, bL),
-                curriedL, curriedPD, curriedW
-            )//u, loans->v, n
-        )(
-            std::move(cf), 
-            loans.GetArray() 
-        ); 
-        
+        batchCF->nextBatch(loans.GetArray());
         //mtx.unlock();
         increment++;
-
         /**if done sending*/
         if(numSend==increment){
-            auto VaR=getVaR(.01);//.9997
+            auto VaR=batchCF->getVaR(.01);//.9997
             std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
             /*auto density=getDensity();
             auto dx=fangoost::computeDX(xSteps, xMin, xMax);
@@ -170,7 +247,10 @@ public:
             return false;
         }
         numSend=metadata["numSend"].GetInt();
-        xMin=-metadata["exposure"].GetDouble()*maxPercentLoss;
+        batchCF->setXRange(
+            metadata["xMin"].GetDouble(),
+            metadata["xMax"].GetDouble()
+        );
         return true;
     }
     void on_open(client * c, websocketpp::connection_hdl hdl) {
@@ -200,27 +280,7 @@ public:
           << "), close reason: " << con->get_remote_close_reason();
         m_error_reason = s.str();
     }
-    std::vector<double> getDensity(){
-        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        }));
-    }
-
-    double getVaR(double alpha){
-        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        double prec=.001;//this seems to work pretty well
-        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })));
-    }
-    double getES(double alpha){
-        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        double prec=10;//this may be too large...but the dollar amount is so large
-        return cfdistutilities::computeESDiscrete(alpha, 10.0, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })));
-    }
+    
     void run(){
         m_endpoint.run();
     }
@@ -250,30 +310,11 @@ private:
     std::string m_error_reason;
     std::string serverschema;
     std::string metaschema;
-
-    /**start of parameters*/
-    int xSteps;
-    int uSteps;
-    double xMin;
-    double xMax;
-    std::vector<double> expectation;
-    std::vector<std::vector<double> > variance;
-    /**number of macro variables*/
-    int m;
-    /**time horizon*/
-    double tau;
-    /**Liquidity parameters*/
-    double lambda;
-    double q;
-    /**CIR/LGD CF parameters*/
-    double alphL;
-    double bL;
-    double sigL;
+    CreditRiskBatch *batchCF;
     /**Total number of received messages.  The server will tell you this as part of metadata...initially set to a high number so that program doesn't return prior to receiving the metadata*/
     int numSend;
     /**this counts how many times have received messages.  once this equals numSend, the program aggregates, cleans up, and exits*/
     int increment;
-    std::vector<std::vector<std::complex<double> > > cf;
 };
 
 int main(int argc, char* argv[]){

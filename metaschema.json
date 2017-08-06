@@ -1,1 +1,1 @@
-R"({"$schema":"http://json-schema.org/draft-04/schema#","type":"object","properties":{"numLoans":{"type":"number"},"exposure":{"type":"number"}, "numSend":{"type":"number"}},"additionalProperties":false})"
+R"({"$schema":"http://json-schema.org/draft-04/schema#","type":"object","properties":{"numLoans":{"type":"number"},"xMin":{"type":"number"}, "xMax":{"type":"number"}, "numSend":{"type":"number"}},"additionalProperties":false, "required":["numLoans","xMin","xMax", "numSend"]})"

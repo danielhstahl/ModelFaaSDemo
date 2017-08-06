@@ -2,8 +2,6 @@
     "url":"ws://localhost:3000",
     "endpoint":"hello",
     "params":{
-        "xMin":-337500000,
-        "xMax":0,
         "y0":[0.5],
         "alpha":[0.2],
         "sigma":[0.3],

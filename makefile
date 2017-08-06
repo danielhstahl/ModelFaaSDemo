@@ -8,12 +8,12 @@ endif
 httpCreditRisk:main.o 
 	$(GCCVAL) -std=c++14 -O3 $(STATIC) -g  main.o $(INCLUDES) -o httpCreditRisk -fopenmp
 
-main.o: main.cpp CreditUtilities.h CheckSchema.h
+main.o: main.cpp CreditUtilities.h CheckSchema.h metaschema.json inputschema.json serverschema.json
 	$(GCCVAL) -std=c++14 -O3 $(STATIC) -g  -c main.cpp   $(INCLUDES) -fopenmp
 
 clean:
 	-rm *.o httpCreditRisk *.out
 
-test: test.cpp CheckSchema.h CreditUtilities.h
+test: test.cpp CheckSchema.h CreditUtilities.h metaschema.json inputschema.json serverschema.json
 	$(GCCVAL) -std=c++14 test.cpp $(INCLUDES) -o test -fopenmp
 

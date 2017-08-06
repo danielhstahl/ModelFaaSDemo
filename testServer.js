@@ -7,8 +7,9 @@ const minLoanSize=10000
 const maxLoanSize=50000
 const maxP=.09
 const minP=.0001
+const maxPossibleLoss=.25//more than this an we are in big trouble...
 const roughTotalExposure=(minLoanSize, maxLoanSize, numLoans)=>numLoans*(minLoanSize+.5*(maxLoanSize-minLoanSize))
-const roughXMin=(exposure, bL, maxP, tau)=>-exposure*bL*maxP*.5*5*tau
+//const roughXMin=(exposure, bL, maxP, tau)=>-exposure*bL*maxP*.5*5*tau
 
 const generateWeights=(numWeights)=>{
     let myWeights=[]
@@ -39,7 +40,7 @@ wss.on('connection', ws=>{
     console.log("Connected")
     console.time("doEC");
     ws.on('message', message=>{
-        ws.send(convertObjToBuffer({numLoans, exposure:roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend}))
+        ws.send(convertObjToBuffer({numLoans, xMin:-maxPossibleLoss*roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend, xMax:0}))
         for(i=0; i<numSend;++i){
             ws.send(convertObjToBuffer(generateFakeLoanData(sendPer, testJson.params.alpha.length)))
         }

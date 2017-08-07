@@ -37,6 +37,7 @@ cloneAndCheckout FangOost
 cloneAndCheckout Vasicek 
 cloneAndCheckout cfdistutilities
 cloneAndCheckout GaussNewton
+cloneAndCheckout TupleUtilities
 git clone https://github.com/zaphoyd/websocketpp
 git clone https://github.com/miloyip/rapidjson
 git clone https://github.com/chriskohlhoff/asio

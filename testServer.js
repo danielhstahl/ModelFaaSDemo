@@ -39,6 +39,7 @@ const wss = new WebSocket.Server({ port: 3000 });
 wss.on('connection', ws=>{
     console.log("Connected")
     console.time("doEC");
+    console.log(maxPossibleLoss*roughTotalExposure(minLoanSize, maxLoanSize, numLoans))
     ws.on('message', message=>{
         ws.send(convertObjToBuffer({numLoans, xMin:-maxPossibleLoss*roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend, xMax:0}))
         for(i=0; i<numSend;++i){

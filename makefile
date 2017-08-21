@@ -9,7 +9,7 @@ httpCreditRisk:main.o
 	$(GCCVAL) -std=c++14 -O3 $(STATIC) -g  main.o $(INCLUDES) -o httpCreditRisk -fopenmp
 
 main.o: main.cpp CreditUtilities.h CheckSchema.h metaschema.json inputschema.json serverschema.json
-	$(GCCVAL) -std=c++14 -O3 $(STATIC) -g  -c main.cpp   $(INCLUDES) -fopenmp
+	$(GCCVAL) -std=c++14 -O3 -D VERBOSE_FLAG=1 $(STATIC) -g  -c main.cpp   $(INCLUDES) -fopenmp
 
 clean:
 	-rm *.o httpCreditRisk *.out

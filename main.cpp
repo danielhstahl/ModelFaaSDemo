@@ -40,7 +40,7 @@ const char *metaSchema =
 #include "metaschema.json"
 ;
 
-const double maxPercentLoss=.14;//if more than this, in big trouble
+//const double maxPercentLoss=.14;//if more than this, in big trouble
 
 //std::mutex mtx;    
 bool ensureEnoughArgs(int argc){
@@ -130,13 +130,14 @@ public:
     }
     double getVaR(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        double prec=.00000000000000001;//this seems to work pretty well
-        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+        double prec=.0000001;//this seems to work pretty well
+        /*return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));*/
+
+        return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec,prec, xMin, xMax, xMin, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));
-        /*return cfdistutilities::computeVaRDiscreteNewton(alpha, xMin, xMax, xMin+(xMax-xMin)*.5, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })), prec);*/
         
     }
     double getES(double alpha){

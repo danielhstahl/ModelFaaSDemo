@@ -131,13 +131,13 @@ public:
     double getVaR(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
         double prec=.0000001;//this seems to work pretty well
-        /*return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })));*/
-
-        return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec,prec, xMin, xMax, xMin, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));
+        /**Cannot use newton because the derivative is essnetially zero and it blows up*/
+        /*return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec,prec, xMin, xMax, xMin, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));*/
         
     }
     double getES(double alpha){

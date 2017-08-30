@@ -40,7 +40,7 @@ const char *metaSchema =
 #include "metaschema.json"
 ;
 
-const double maxPercentLoss=.14;//if more than this, in big trouble
+//const double maxPercentLoss=.14;//if more than this, in big trouble
 
 //std::mutex mtx;    
 bool ensureEnoughArgs(int argc){

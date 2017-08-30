@@ -130,19 +130,33 @@ public:
     }
     double getVaR(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        double prec=.00000000000000001;//this seems to work pretty well
-        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+        double prec=.0000000001;//this seems to work pretty well
+        /*return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));*/
+        const auto EL=getEL(vasicekLogFN);
+        std::cout<<"EL:"<<EL<<std::endl;
+        return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec, prec, xMin, xMax, EL, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));
-        /*return cfdistutilities::computeVaRDiscreteNewton(alpha, xMin, xMax, xMin+(xMax-xMin)*.5, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })), prec);*/
         
     }
     double getES(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        double prec=10;//this may be too large...but the dollar amount is so large
+        double prec=.0000000001;//this may be too large...but the dollar amount is so large
         return cfdistutilities::computeESDiscrete(alpha, 10.0, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
+    }
+    double getEL(){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        return cfdistutilities::computeELDiscrete(xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
+    }
+    template<typename VasLogFN>
+    double getEL(const VasLogFN& vasicekLogFN){
+        return cfdistutilities::computeELDiscrete(xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));
     }
@@ -185,7 +199,6 @@ public:
     }
     int connect() {
         websocketpp::lib::error_code ec;
-
         client::connection_ptr con = m_endpoint.get_connection(m_uri, ec);
         
         if (ec) {
@@ -232,6 +245,13 @@ public:
         if(numSend==increment){
             auto VaR=batchCF->getVaR(.01);//.9997
             std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
+            VaR=batchCF->getVaR(.0003);
+            std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
+            auto ES=batchCF->getES(.01);
+            std::cout<<"{\"ES\":"<<ES<<"}"<<std::endl;
+            ES=batchCF->getES(.0003);
+            std::cout<<"{\"ES\":"<<ES<<"}"<<std::endl;
+ 
             /*auto density=getDensity();
             auto dx=fangoost::computeDX(xSteps, xMin, xMax);
             std::cout<<"[";

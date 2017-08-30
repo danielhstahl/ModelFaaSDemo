@@ -7,7 +7,7 @@ const minLoanSize=10000
 const maxLoanSize=50000
 const maxP=.09
 const minP=.0001
-const maxPossibleLoss=.25//more than this an we are in big trouble...
+const maxPossibleLoss=.14//more than this an we are in big trouble...
 const roughTotalExposure=(minLoanSize, maxLoanSize, numLoans)=>numLoans*(minLoanSize+.5*(maxLoanSize-minLoanSize))
 //const roughXMin=(exposure, bL, maxP, tau)=>-exposure*bL*maxP*.5*5*tau
 

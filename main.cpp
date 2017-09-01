@@ -122,22 +122,38 @@ public:
             loans
         ); 
     }
+    double getMin(){
+        return xMin;
+    }
+    double getMax(){
+        return xMax;
+    }
+    int getXSteps(){
+        return xSteps;
+    }
     std::vector<double> getDensity(){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
         return fangoost::computeInvDiscreteLog(xSteps, xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         }));
     }
+    std::vector<double> getCDF(){
+        auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+        return cfdistutilities::computeCDF(xSteps, xMin, xMax, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
+    } 
     double getVaR(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
         double prec=.0000001;//this seems to work pretty well
-        return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })));
-        /**Cannot use newton because the derivative is essnetially zero and it blows up*/
-        /*return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec,prec, xMin, xMax, xMin, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+        /*return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));*/
+
+        /**Cannot use newton because the derivative is essnetially zero and it blows up*/
+        return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec,prec, xMin, xMax, -200000.0, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+            return vasicekLogFN(cf[index]);
+        })));
         
     }
     double getES(double alpha){
@@ -233,7 +249,10 @@ public:
         if(numSend==increment){
             auto VaR=batchCF->getVaR(.01);//.9997
             std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
-            /*auto density=getDensity();
+            /*auto xMin=batchCF->getMin();
+            auto xMax=batchCF->getMax();
+            auto xSteps=batchCF->getXSteps();
+            auto density=batchCF->getCDF();
             auto dx=fangoost::computeDX(xSteps, xMin, xMax);
             std::cout<<"[";
             for(int i=0; i<density.size()-1;++i){

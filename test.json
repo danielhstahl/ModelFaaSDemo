@@ -4,7 +4,7 @@
     "params":{
         "y0":[0.5],
         "alpha":[0.2],
-        "sigma":[0.3],
+        "sigma":[0.6],
         "rho":[[1]],
         "tau":1,
         "lambda":0.0,

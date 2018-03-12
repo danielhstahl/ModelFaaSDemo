@@ -1,5 +1,5 @@
 # Credit Model with streaming API
-WIP.  This is to demo best in class model development for the sake of validation.  Large amounts of data are streamed and the program works with the data asyncrounously.  
+WIP.  This is to demo best in class model development for the sake of validation.  Large amounts of data are streamed and the program works with the data asynchronously.  
 
 ## Compile 
 
@@ -9,7 +9,7 @@ Run `./compileAndPackage.sh`.  This will also compile and run the unit tests.  T
 
 ### Mac
 
-It should work when using a gcc compatable with fopenmp...install using homebrew.  `brew install gcc --without-multilib`.  Then follow the linux commands.
+It should work when using a gcc compatible with fopenmp...install using homebrew.  `brew install gcc --without-multilib`.  Then follow the linux commands.
 
 
 ## Workarounds

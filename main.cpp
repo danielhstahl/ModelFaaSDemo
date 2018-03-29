@@ -146,20 +146,16 @@ public:
     double getVaR(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
         double prec=.0000000001;//this seems to work pretty well
-        /*return cfdistutilities::computeVaRDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
-            return vasicekLogFN(cf[index]);
-        })));*/
         const auto EL=getEL(vasicekLogFN);
-        std::cout<<"EL:"<<EL<<std::endl;
         return cfdistutilities::computeVaRNewtonDiscrete(alpha, prec, prec, xMin, xMax, EL, fangoost::convertLogCFToRealExp(xMin, xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));
         
     }
-    double getES(double alpha){
+    auto getES(double alpha){
         auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
-        double prec=.0000000001;//this may be too large...but the dollar amount is so large
-        return cfdistutilities::computeESDiscrete(alpha, 10.0, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
+        double prec=.0000000001;
+        return cfdistutilities::computeESDiscrete(alpha, prec, xMin, xMax, fangoost::convertLogCFToRealExp(xMin,xMax, futilities::for_each_parallel(0, uSteps, [&](const auto& index){
             return vasicekLogFN(cf[index]);
         })));
     }
@@ -258,22 +254,16 @@ public:
         increment++;
         /**if done sending*/
         if(numSend==increment){
-            auto VaR=batchCF->getVaR(.01);//.9997
-            std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
-            VaR=batchCF->getVaR(.0003);
-            std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
+            //auto VaR=batchCF->getVaR(.01);//.9997
+            //std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
+            //VaR=batchCF->getVaR(.0003);
+            //std::cout<<"{\"VaR\":"<<VaR<<"}"<<std::endl;
             auto ES=batchCF->getES(.01);
-            std::cout<<"{\"ES\":"<<ES<<"}"<<std::endl;
-            ES=batchCF->getES(.0003);
-            std::cout<<"{\"ES\":"<<ES<<"}"<<std::endl;
+            std::cout<<"{\"ES\":"<<std::get<cfdistutilities::ES>(ES)<<"}"<<std::endl;
+            std::cout<<"{\"VaR\":"<<std::get<cfdistutilities::VAR>(ES)<<"}"<<std::endl;
+            //ES=batchCF->getES(.0003);
+            //std::cout<<"{\"ES\":"<<ES<<"}"<<std::endl;
  
-            /*auto density=getDensity();
-            auto dx=fangoost::computeDX(xSteps, xMin, xMax);
-            std::cout<<"[";
-            for(int i=0; i<density.size()-1;++i){
-                std::cout<<"{\"x\":"<<xMin+i*dx<<", \"density\":"<<density[i]<<"},";
-            }
-            std::cout<<"{\"x\":"<<xMin+(density.size()-1)*dx<<", \"density\":"<<density[density.size()-1]<<"}]"<<std::endl;*/
             m_status="done";
             close(websocketpp::close::status::normal, "end of program");
         }

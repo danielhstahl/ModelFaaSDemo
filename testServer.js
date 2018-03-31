@@ -51,6 +51,7 @@ wss.on('connection', ws=>{
                 for(i=0; i<numSend;++i){
                     ws.send(convertObjToBuffer(generateFakeLoanData(sendPer, testJson.params.alpha.length)))
                 }
+                ws.send("done")
                 break
             }
             default: {

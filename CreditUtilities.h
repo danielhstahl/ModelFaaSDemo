@@ -21,9 +21,9 @@ namespace creditutilities {
     template<typename Number, typename GetLiquidity, typename GetLogLPMCF>
     auto getFullCFFn(const Number& xMin, const Number& xMax, GetLiquidity&& getLiquiditytmp, GetLogLPMCF&& logLPMCFtmp){
         auto du=fangoost::computeDU(xMin, xMax);
-        return [xMax,xMin, logLPMCF=std::move(logLPMCFtmp), getLiquidity=std::move(getLiquiditytmp), du](auto&& cf, const auto& loans){ 
+        return [xMax,xMin, logLPMCF=std::move(logLPMCFtmp), getLiquidity=std::move(getLiquiditytmp), du](auto&& cf, auto&& loans){ 
             /**Note that val+!!!  This is so the cf can be recursively built from multiple runs over loans*/
-            return futilities::for_each_parallel(cf, [&](const auto& val, const auto& iterateU){
+            return futilities::for_each_parallel(std::move(cf), [&](const auto& val, const auto& iterateU){
                 return futilities::for_each_parallel(
                     logLPMCF(
                         getLiquidity(
@@ -59,10 +59,10 @@ namespace creditutilities {
 
     /**Characteristic function for LGD.  Follows CIR process.  U is typically complex.  Pass by value to enable multiple lambdas*/
     template<typename Lambda, typename Theta, typename Sigma, typename T, typename X0>
-    auto getLGDCFFn(const Lambda& lambda, Theta&& thetatmp, const Sigma& sigma,  const T& t, X0tmp&& x0){
+    auto getLGDCFFn(const Lambda& lambda, Theta&& thetatmp, const Sigma& sigma,  const T& t, X0&& x0tmp){
         auto expt=exp(-lambda*t);
         auto sigL=-(sigma*sigma)/(2*lambda);
-        return [expt, sigL, theta=std::move(thetatmp), x0=std::move(x0)](const auto& u, const auto& l){
+        return [expt, sigL, theta=std::move(thetatmp), x0=std::move(x0tmp)](const auto& u, const auto& l){
             auto uu=u*l;
             auto uP=uu*(1-expt)*sigL+1.0;
             return exp((uu*expt*x0)/uP)*pow(uP, theta/sigL);

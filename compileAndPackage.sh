@@ -39,7 +39,7 @@ cloneAndCheckout cfdistutilities
 cloneAndCheckout GaussNewton
 cloneAndCheckout TupleUtilities
 cloneAndCheckout AutoDiff
-git clone https://github.com/zaphoyd/websocketpp
+git clone https://github.com/dhbaird/easywsclient
 git clone https://github.com/miloyip/rapidjson
 git clone https://github.com/chriskohlhoff/asio
 compile 

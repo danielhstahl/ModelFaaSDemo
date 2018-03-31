@@ -41,10 +41,24 @@ wss.on('connection', ws=>{
     console.time("doEC");
     console.log(maxPossibleLoss*roughTotalExposure(minLoanSize, maxLoanSize, numLoans))
     ws.on('message', message=>{
-        ws.send(convertObjToBuffer({numLoans, xMin:-maxPossibleLoss*roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend, xMax:0}))
-        for(i=0; i<numSend;++i){
-            ws.send(convertObjToBuffer(generateFakeLoanData(sendPer, testJson.params.alpha.length)))
+        console.log(message)
+        switch(message){
+            case 'init':{
+                ws.send(convertObjToBuffer({numLoans, xMin:-maxPossibleLoss*roughTotalExposure(minLoanSize, maxLoanSize, numLoans), numSend, xMax:0}))
+                break
+            }
+            case 'getloans':{
+                for(i=0; i<numSend;++i){
+                    ws.send(convertObjToBuffer(generateFakeLoanData(sendPer, testJson.params.alpha.length)))
+                }
+                ws.send("done")
+                break
+            }
+            default: {
+                console.log("incorrect message")
+            }
         }
+        
     });
     ws.on('close', ()=>{
         console.timeEnd("doEC");

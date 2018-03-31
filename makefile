@@ -1,4 +1,4 @@
-INCLUDES= -I../FangOost -I../FunctionalUtilities -I../cfdistutilities -I../rapidjson/include/rapidjson -I../Vasicek -I../websocketpp -I../asio/asio/include -I../GaussNewton -I../AutoDiff -I../TupleUtilities
+INCLUDES= -I../FangOost -I../FunctionalUtilities -I../cfdistutilities -I../rapidjson/include/rapidjson -I../Vasicek -I../easywsclient -I../GaussNewton -I../AutoDiff -I../TupleUtilities
 GCCVAL=g++
 
 UNAME_S := $(shell uname -s)

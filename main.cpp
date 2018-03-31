@@ -74,6 +74,7 @@ private:
     double alphL;
     double bL;
     double sigL;
+    std::function<std::vector<std::vector<std::complex<double> > >(CreditRiskBatch&)> incrementalCF;
 public:
     CreditRiskBatch(int uSteps_, int xSteps_, double tau_){
         xSteps=xSteps_;
@@ -99,17 +100,30 @@ public:
     void setSystemicParameters(const Array& y0, const Array& sigma, const Array& alpha, const TwoDArray& rho){
         m=alpha.Size();
         /**function to retreive vector values from JSON*/
-        auto retreiveJSONValue=[](const auto& val){
+        auto retrieveJSONValue=[](const auto& val){
             return val.GetDouble();
         };
         /**expectation, used for the vasicek MGF*/
-        expectation=vasicek::computeIntegralExpectationLongRunOne(y0, alpha, m, tau, retreiveJSONValue);
+        expectation=vasicek::computeIntegralExpectationLongRunOne(y0, alpha, m, tau, retrieveJSONValue);
         /**variance, used for the vasicek MGF*/ 
-        variance=vasicek::computeIntegralVarianceVasicek(alpha, sigma, rho, m, tau, retreiveJSONValue);
+        variance=vasicek::computeIntegralVarianceVasicek(alpha, sigma, rho, m, tau, retrieveJSONValue);
         cf=std::vector<std::vector<std::complex<double> > >(uSteps, std::vector<std::complex<double> >(m, 0));
+        
+        incrementalCF=[this](CreditRiskBatch& crb){
+            creditutilities::getFullCFFn(xMin, xMax,
+                creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
+                creditutilities::logLPMCF( 
+                    m,
+                    creditutilities::getLGDCFFn(alphL, bL, sigL, tau, bL),
+                    curriedL, curriedPD, curriedW
+                )//u, loans->v, n
+            )
+        }
     }
     template<typename Array>
     void nextBatch(const Array& loans){
+        //In theory, this can be made much more efficient by making this lambda a member variable.  
+        //however, I'm struggling to get it to work.  
         cf=creditutilities::getFullCFFn(xMin, xMax,
             creditutilities::getLiquidityRiskFn(lambda, q),//u->complex
             creditutilities::logLPMCF( 

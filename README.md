@@ -12,13 +12,9 @@ Run `./compileAndPackage.sh`.  This will also compile and run the unit tests.  T
 It should work when using a gcc compatible with fopenmp...install using homebrew.  `brew install gcc --without-multilib`.  Then follow the linux commands.
 
 
-## Workarounds
-
-The websocket library is class based instead of functional.  There are lots of "global" variables in that class.  Whenever a library comes on that supports functional programming and websocket while being header only and not relying on boost....then I'll switch.  
-
 ## Assumptions
 
-The API that is hit must communicate how many messages it will send and some aggregated statistics.
+The API that is hit must communicate how many messages it will send and some aggregated statistics.  For an example, see `testServer.js`.
 
 ## Run
 

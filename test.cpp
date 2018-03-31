@@ -198,7 +198,7 @@ TEST_CASE("ensure total inversion returns correctly", "[CreditUtilities]"){
         std::move(tmpCf), 
         testLoans 
     );
-    auto vasicekLogFN=vasicek::getLogVasicekMFGFn(expectation, variance);
+    auto vasicekLogFN=vasicek::getLogVasicekMFGFn(std::move(expectation), std::move(variance));
     auto test=fangoost::computeInvDiscreteLog(xUnits, tempxmin, tempxmax, futilities::for_each_parallel(0, uUnits, [&](const auto& index){
         return vasicekLogFN(tmpCf[index]);
     }));

@@ -26,6 +26,6 @@
   },
   "homepage": "https://github.com/phillyfan1138/ModelFaaSDemo#readme",
   "dependencies": {
-    "ws": "^3.0.0"
+    "ws": "^7.0.0"
   }
 }
